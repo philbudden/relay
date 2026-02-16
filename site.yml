@@ -1,0 +1,64 @@
+---
+# Relay Service Management Playbook
+# Manages containerized services on NAS host provisioned by Keystone
+#
+# Usage:
+#   ansible-playbook site.yml
+#   ansible-playbook site.yml --tags samba
+#   ansible-playbook site.yml --check  # Dry run
+
+- name: Deploy Relay containerized services
+  hosts: relay_services
+  become: true
+  
+  vars:
+    relay_version: "1.0.0"
+  
+  pre_tasks:
+    - name: Display Relay information
+      ansible.builtin.debug:
+        msg: |
+          Deploying Relay v{{ relay_version }}
+          OS: {{ ansible_distribution }} {{ ansible_distribution_version }}
+          Hostname: {{ ansible_hostname }}
+          Architecture: {{ ansible_architecture }}
+      tags: always
+    
+    - name: Verify supported platform
+      ansible.builtin.assert:
+        that:
+          - ansible_distribution in ['Debian', 'Fedora']
+          - ansible_architecture == 'aarch64'
+        fail_msg: "Unsupported platform: {{ ansible_distribution }} on {{ ansible_architecture }}"
+        success_msg: "Platform {{ ansible_distribution }}/{{ ansible_architecture }} is supported"
+      tags: always
+    
+    - name: Verify Keystone prerequisites
+      ansible.builtin.stat:
+        path: "{{ item }}"
+      register: keystone_prereq_check
+      loop:
+        - /etc/containers/systemd  # Quadlet directory
+        - /mnt/ssd                 # SSD mount
+        - /mnt/backup              # Backup mount
+      failed_when: not keystone_prereq_check.results | selectattr('stat.exists') | list | length == 3
+      tags: always
+  
+  roles:
+    - role: samba
+      tags: ['samba', 'file-sharing']
+  
+  post_tasks:
+    - name: Display completion summary
+      ansible.builtin.debug:
+        msg: |
+          ✓ Relay services deployed successfully
+          
+          Active services:
+            - Samba (SMB/CIFS file sharing)
+          
+          Next steps:
+            - Check status: systemctl status samba.service
+            - View logs: journalctl -u samba.service -f
+            - List containers: podman ps
+      tags: always

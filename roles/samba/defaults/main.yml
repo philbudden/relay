@@ -1,0 +1,72 @@
+---
+# samba role: SMB/CIFS file sharing service
+
+# Container image configuration
+samba_image: "dperson/samba"
+samba_image_tag: "latest"  # TODO: Pin to specific version after testing
+samba_use_digest: false
+samba_image_digest: ""  # TODO: Add digest for production
+samba_full_image: "{{ samba_image }}:{{ samba_image_tag }}"
+
+# Storage paths (assuming Keystone-provisioned storage)
+samba_base_dir: "/mnt/ssd/services/samba"
+samba_config_dir: "{{ samba_base_dir }}/config"
+samba_cache_dir: "{{ samba_base_dir }}/cache"
+
+# Share configuration
+# Expose organized subdirectories rather than raw mount points
+samba_shares:
+  - name: "ssd"
+    path: "/mnt/ssd/shares"
+    browseable: "yes"
+    readonly: "no"
+    guest: "no"
+    users: "smbuser"
+    comment: "SSD Storage"
+  - name: "backup"
+    path: "/mnt/backup/shares"
+    browseable: "yes"
+    readonly: "yes"  # Backup is read-only by default
+    guest: "no"
+    users: "smbuser"
+    comment: "Backup Storage (Read-Only)"
+
+# User configuration
+# Note: This creates users inside the container
+# Host-level user mapping handled by Podman UID/GID mapping
+samba_users:
+  - username: "smbuser"
+    password: "changeme"  # SECURITY: Override via inventory or Ansible Vault
+    uid: 1000
+    gid: 1000
+
+# Network configuration
+samba_port_smb: 445
+samba_port_netbios: 139
+samba_workgroup: "WORKGROUP"
+samba_server_string: "Relay NAS"
+
+# Systemd service configuration
+samba_systemd_unit: "samba.service"
+samba_restart_policy: "always"
+samba_restart_sec: "10s"
+samba_timeout_start_sec: "120"
+
+# Quadlet configuration
+samba_quadlet_file: "/etc/containers/systemd/samba.container"
+
+# Performance tuning
+samba_socket_options: "TCP_NODELAY IPTOS_LOWDELAY"
+
+# Security options
+samba_security: "user"
+samba_guest_account: "nobody"
+samba_map_to_guest: "Bad User"
+
+# Logging
+samba_log_level: "1"
+
+# Additional environment variables for dperson/samba container
+# See: https://github.com/dperson/samba
+samba_timezone: "UTC"
+samba_recycle_bin: false

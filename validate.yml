@@ -1,0 +1,68 @@
+---
+# Relay Validation Playbook
+# Run to validate configuration without making changes
+
+- name: Validate Relay configuration
+  hosts: relay_services
+  gather_facts: true
+  become: false
+  
+  tasks:
+    - name: Check SSH connectivity
+      ansible.builtin.ping:
+    
+    - name: Gather system facts
+      ansible.builtin.setup:
+    
+    - name: Display host information
+      ansible.builtin.debug:
+        msg:
+          - "Hostname: {{ ansible_hostname }}"
+          - "OS: {{ ansible_distribution }} {{ ansible_distribution_version }}"
+          - "Architecture: {{ ansible_architecture }}"
+          - "Python: {{ ansible_python_version }}"
+    
+    - name: Check sudo access
+      ansible.builtin.command: sudo -n true
+      changed_when: false
+      become: false
+    
+    - name: Verify required directories (Keystone prerequisites)
+      ansible.builtin.stat:
+        path: "{{ item }}"
+      register: prereq_dirs
+      loop:
+        - /etc/containers/systemd
+        - /mnt/ssd
+        - /mnt/backup
+      become: true
+    
+    - name: Report prerequisite status
+      ansible.builtin.debug:
+        msg: |
+          Keystone Prerequisites:
+          {% for result in prereq_dirs.results %}
+          - {{ result.item }}: {{ 'OK' if result.stat.exists else 'MISSING' }}
+          {% endfor %}
+    
+    - name: Verify Podman installation
+      ansible.builtin.command: podman --version
+      register: podman_version
+      changed_when: false
+      failed_when: false
+      become: true
+    
+    - name: Display Podman status
+      ansible.builtin.debug:
+        msg: "Podman: {{ podman_version.stdout if podman_version.rc == 0 else 'NOT INSTALLED' }}"
+    
+    - name: Check systemd status
+      ansible.builtin.command: systemctl is-system-running
+      register: systemd_status
+      changed_when: false
+      failed_when: false
+      become: true
+    
+    - name: Display systemd status
+      ansible.builtin.debug:
+        msg: "systemd: {{ systemd_status.stdout }}"

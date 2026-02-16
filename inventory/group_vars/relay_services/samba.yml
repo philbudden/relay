@@ -1,0 +1,48 @@
+---
+# Samba service configuration for relay_services group
+# Override default values here or use Ansible Vault for secrets
+
+# Uncomment and customize as needed:
+
+# samba_workgroup: "HOMELAB"
+# samba_server_string: "My NAS"
+# samba_timezone: "America/New_York"
+
+# Example: Custom shares
+# samba_shares:
+#   - name: "media"
+#     path: "/mnt/ssd/shares/media"
+#     browseable: "yes"
+#     readonly: "no"
+#     guest: "no"
+#     users: "alice,bob"
+#     comment: "Media Library"
+#   - name: "documents"
+#     path: "/mnt/ssd/shares/documents"
+#     browseable: "yes"
+#     readonly: "no"
+#     guest: "no"
+#     users: "alice"
+#     comment: "Personal Documents"
+#   - name: "backups"
+#     path: "/mnt/backup/shares"
+#     browseable: "yes"
+#     readonly: "yes"
+#     guest: "no"
+#     users: "alice,bob"
+#     comment: "Backup Storage (Read-Only)"
+
+# SECURITY: Use Ansible Vault for passwords!
+# Create: ansible-vault create inventory/group_vars/relay_services/vault.yml
+# Edit: ansible-vault edit inventory/group_vars/relay_services/vault.yml
+#
+# Then reference in users:
+# samba_users:
+#   - username: "alice"
+#     password: "{{ vault_alice_samba_password }}"
+#     uid: 1000
+#     gid: 1000
+#   - username: "bob"
+#     password: "{{ vault_bob_samba_password }}"
+#     uid: 1001
+#     gid: 1001

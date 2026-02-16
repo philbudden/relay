@@ -1,0 +1,88 @@
+---
+# samba role tasks
+
+- name: Verify Keystone prerequisites - SSD mount
+  ansible.builtin.stat:
+    path: /mnt/ssd
+  register: ssd_mount_check
+  tags: samba
+
+- name: Verify Keystone prerequisites - Backup mount
+  ansible.builtin.stat:
+    path: /mnt/backup
+  register: backup_mount_check
+  tags: samba
+
+- name: Assert storage prerequisites from Keystone
+  ansible.builtin.assert:
+    that:
+      - ssd_mount_check.stat.exists
+      - ssd_mount_check.stat.isdir
+      - backup_mount_check.stat.exists
+      - backup_mount_check.stat.isdir
+    fail_msg: "Required storage mounts (/mnt/ssd, /mnt/backup) not found. Ensure Keystone has provisioned storage."
+    success_msg: "Storage prerequisites satisfied"
+  tags: samba
+
+- name: Verify Quadlet directory exists
+  ansible.builtin.stat:
+    path: /etc/containers/systemd
+  register: quadlet_dir_check
+  tags: samba
+
+- name: Assert Quadlet directory from Keystone
+  ansible.builtin.assert:
+    that:
+      - quadlet_dir_check.stat.exists
+      - quadlet_dir_check.stat.isdir
+    fail_msg: "Quadlet directory /etc/containers/systemd not found. Ensure Keystone container-runtime role has run."
+    success_msg: "Quadlet directory exists"
+  tags: samba
+
+- name: Create Samba service directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: '0755'
+    owner: root
+    group: root
+  loop:
+    - "{{ samba_config_dir }}"
+    - "{{ samba_cache_dir }}"
+    - /mnt/ssd/shares
+    - /mnt/backup/shares
+  tags: samba
+
+- name: Deploy Samba Quadlet container definition
+  ansible.builtin.template:
+    src: samba.container.j2
+    dest: "{{ samba_quadlet_file }}"
+    mode: '0644'
+    owner: root
+    group: root
+  notify:
+    - reload systemd
+    - restart samba
+  tags: samba
+
+- name: Enable and start Samba service
+  ansible.builtin.systemd:
+    name: "{{ samba_systemd_unit }}"
+    enabled: true
+    state: started
+    daemon_reload: true
+  tags: samba
+
+- name: Display Samba service information
+  ansible.builtin.debug:
+    msg: |
+      Samba service deployed successfully
+      
+      Service: {{ samba_systemd_unit }}
+      Shares: {{ samba_shares | map(attribute='name') | join(', ') }}
+      
+      Access via: smb://<nas-ip>/{{ samba_shares[0].name }}
+      
+      SECURITY WARNING: Default password is 'changeme'
+      Override 'samba_users' in inventory with Ansible Vault
+  tags: samba

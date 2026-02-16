@@ -1,1 +1,39 @@
+# Ansible temporary files
+*.retry
+.ansible
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Virtual environments
+venv/
+env/
+ENV/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Secrets
+inventory/group_vars/*/vault.yml
+*.vault
+
+# Ansible facts cache
+/tmp/ansible_facts
+
+# Logs
+*.log
+
+# Reference repository (managed separately)
 keystone/
+

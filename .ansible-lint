@@ -1,0 +1,20 @@
+---
+# Ansible Lint configuration for Relay
+
+profile: production
+
+exclude_paths:
+  - .git/
+  - .github/
+  - keystone/  # External reference repository
+  - inventory/group_vars/relay_services/vault.yml  # Encrypted
+
+warn_list:
+  - experimental  # Allow experimental features
+  - role-name[path]  # Allow role paths without galaxy namespace
+
+skip_list:
+  - yaml[line-length]  # Allow longer lines for readability
+
+# Use default rules from production profile
+# See: https://ansible-lint.readthedocs.io/profiles/

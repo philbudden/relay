@@ -1,0 +1,12 @@
+---
+# samba role handlers
+
+- name: reload systemd
+  ansible.builtin.systemd:
+    daemon_reload: true
+
+- name: restart samba
+  ansible.builtin.systemd:
+    name: "{{ samba_systemd_unit }}"
+    state: restarted
+  when: ansible_facts.services[samba_systemd_unit] is defined
