@@ -1,0 +1,8 @@
+{
+  "name": "relay",
+  "image": "mcr.microsoft.com/devcontainers/python:3",
+  "features": {
+    "ghcr.io/rio/features/chezmoi:1": {}
+  },
+  "postCreateCommand": "bash -lc 'python -m pip install --upgrade pip && pip install ansible ansible-lint yamllint'",
+}
