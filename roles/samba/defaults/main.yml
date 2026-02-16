@@ -3,9 +3,9 @@
 
 # Container image configuration
 samba_image: "dperson/samba"
-samba_image_tag: "latest"  # TODO: Pin to specific version after testing
+samba_image_tag: "aarch64"  # Architecture-specific stable tag
 samba_use_digest: false
-samba_image_digest: ""  # TODO: Add digest for production
+samba_image_digest: ""  # Optional: Add digest for additional pinning
 samba_full_image: "{{ samba_image }}:{{ samba_image_tag }}"
 
 # Storage paths (assuming Keystone-provisioned storage)
@@ -34,9 +34,10 @@ samba_shares:
 # User configuration
 # Note: This creates users inside the container
 # Host-level user mapping handled by Podman UID/GID mapping
+# REQUIRED: Passwords must be set via Ansible Vault in inventory
 samba_users:
   - username: "smbuser"
-    password: "changeme"  # SECURITY: Override via inventory or Ansible Vault
+    password: ""  # REQUIRED: Set via Ansible Vault (will fail if empty)
     uid: 1000
     gid: 1000
 
@@ -55,16 +56,9 @@ samba_timeout_start_sec: "120"
 # Quadlet configuration
 samba_quadlet_file: "/etc/containers/systemd/samba.container"
 
-# Performance tuning
-samba_socket_options: "TCP_NODELAY IPTOS_LOWDELAY"
-
-# Security options
-samba_security: "user"
-samba_guest_account: "nobody"
-samba_map_to_guest: "Bad User"
-
-# Logging
-samba_log_level: "1"
+# Resource limits (optional - set to empty string to disable)
+samba_memory_limit: ""  # Example: "1G" to limit to 1GB RAM
+samba_cpu_shares: ""    # Example: "1024" for normal priority
 
 # Additional environment variables for dperson/samba container
 # See: https://github.com/dperson/samba

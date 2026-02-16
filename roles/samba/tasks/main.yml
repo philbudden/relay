@@ -39,6 +39,16 @@
     success_msg: "Quadlet directory exists"
   tags: samba
 
+- name: Validate Samba user passwords are set
+  ansible.builtin.assert:
+    that:
+      - item.password is defined
+      - item.password | length > 0
+    fail_msg: "Password required for Samba user '{{ item.username }}'. Set via Ansible Vault in inventory."
+  loop: "{{ samba_users }}"
+  no_log: true
+  tags: samba
+
 - name: Create Samba service directories
   ansible.builtin.file:
     path: "{{ item }}"
@@ -46,11 +56,7 @@
     mode: '0755'
     owner: root
     group: root
-  loop:
-    - "{{ samba_config_dir }}"
-    - "{{ samba_cache_dir }}"
-    - /mnt/ssd/shares
-    - /mnt/backup/shares
+  loop: "{{ [samba_config_dir, samba_cache_dir] + (samba_shares | map(attribute='path') | list | unique) }}"
   tags: samba
 
 - name: Deploy Samba Quadlet container definition
@@ -83,6 +89,6 @@
       
       Access via: smb://<nas-ip>/{{ samba_shares[0].name }}
       
-      SECURITY WARNING: Default password is 'changeme'
-      Override 'samba_users' in inventory with Ansible Vault
+      SECURITY NOTE: Passwords are stored in environment variables.
+      See roles/samba/README.md security section for details.
   tags: samba

@@ -219,8 +219,73 @@ sudo dnf install cifs-utils      # Fedora
 
 # Mount share
 sudo mount -t cifs //<nas-ip>/ssd /mnt/nas \
-  -o username=smbuser,password=changeme,uid=1000,gid=1000
+  -o username=smbuser,password=YOUR_PASSWORD,uid=1000,gid=1000
 ```
+
+
+## Upgrading Samba
+
+### Safe Upgrade Procedure
+
+1. **Check release notes**
+   ```bash
+   # Visit: https://github.com/dperson/samba/releases
+   # Review changelog for breaking changes
+   ```
+
+2. **Update image tag**
+   ```yaml
+   # roles/samba/defaults/main.yml or inventory override
+   samba_image_tag: "NEW_TAG_OR_DIGEST"
+   ```
+
+3. **Test in check mode**
+   ```bash
+   ansible-playbook site.yml --tags samba --check --diff
+   ```
+
+4. **Deploy with monitoring**
+   ```bash
+   ansible-playbook site.yml --tags samba
+   
+   # Verify service started
+   ssh nas systemctl status samba.service
+   
+   # Check logs for errors
+   ssh nas journalctl -u samba.service -n 50 --no-pager
+   ```
+
+5. **Test SMB connectivity**
+   ```bash
+   # From client machine
+   smbclient -L //nas-ip/ -U smbuser
+   ```
+
+6. **Rollback if needed**
+   ```bash
+   # Revert image tag in Git
+   git revert HEAD
+   
+   # Redeploy previous version
+   ansible-playbook site.yml --tags samba
+   ```
+
+### Automated Updates (Optional)
+
+AutoUpdate is enabled by default. To use automated updates:
+
+```bash
+# Check for updates (dry run)
+ssh nas podman auto-update --dry-run
+
+# Apply updates
+ssh nas podman auto-update
+
+# Enable timer for regular checks
+ssh nas systemctl enable --now podman-auto-update.timer
+```
+
+**Warning**: Automated updates can introduce breaking changes. Only enable if you monitor the NAS regularly.
 
 ## Operations
 
@@ -309,10 +374,23 @@ Ensure directories exist and have correct permissions.
 
 ### Mandatory
 
-1. **Change default password** - Use Ansible Vault for production
-2. **Restrict user access** - Only grant access to specific users per share
-3. **Firewall configuration** - Limit SMB access to trusted networks (Tailscale)
-4. **Read-only backups** - Backup share should be read-only to prevent ransomware
+1. **Set passwords via Ansible Vault** - Default is empty and will fail deployment
+   ```bash
+   ansible-vault create inventory/group_vars/relay_services/vault.yml
+   # Add: vault_samba_password: "your_secure_password"
+   # Then reference: password: "{{ vault_samba_password }}"
+   ```
+
+2. **Password exposure in environment variables** - Passwords are passed to the container via environment variables. This means:
+   - They are visible in `podman inspect samba`
+   - They may appear in systemd journal with verbose logging
+   - They are visible in the container's `/proc/<pid>/environ`
+   
+   This is a limitation of the `dperson/samba` container design. For typical home NAS use behind a firewall/Tailscale, this is acceptable. For higher security environments, consider alternative Samba containers that support password files or secrets management.
+
+3. **Restrict user access** - Only grant access to specific users per share
+4. **Firewall configuration** - Limit SMB access to trusted networks (Tailscale)
+5. **Read-only backups** - Backup share should be read-only to prevent ransomware
 
 ### Recommended
 

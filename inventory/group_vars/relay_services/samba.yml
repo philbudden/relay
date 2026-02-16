@@ -46,3 +46,5 @@
 #     password: "{{ vault_bob_samba_password }}"
 #     uid: 1001
 #     gid: 1001
+#
+# NOTE: Passwords are REQUIRED. Empty passwords will cause deployment to fail.
