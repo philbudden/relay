@@ -98,10 +98,19 @@ Save and close. The file is now encrypted — you can safely commit it to Git.
 
 ## Step 3: Configure Your Cameras
 
-Create a plain-text (unencrypted) configuration file for the NVR:
+Create the file `inventory/group_vars/relay_services/nvr.yml` in your Relay repository. This is a plain-text (unencrypted) file that lives alongside your other service configuration files:
+
+```
+relay/
+└── inventory/
+    └── group_vars/
+        └── relay_services/
+            ├── vault.yml   ← encrypted secrets (from Step 2)
+            └── nvr.yml     ← create this now
+```
 
 ```bash
-# Create the file
+# Run this from the root of your Relay repository
 cat > inventory/group_vars/relay_services/nvr.yml << 'EOF'
 ---
 nvr_cameras:
