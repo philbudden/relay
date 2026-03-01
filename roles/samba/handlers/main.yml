@@ -4,8 +4,9 @@
 - name: reload systemd
   ansible.builtin.systemd:
     daemon_reload: true
+  listen: reload systemd
 
-- name: restart samba
+- name: Restart samba
   ansible.builtin.systemd:
     name: "{{ samba_systemd_unit }}"
     state: restarted
@@ -13,3 +14,4 @@
     - ansible_facts.services is defined
     - samba_systemd_unit in ansible_facts.services
     - samba_service_restart_enabled | default(true)
+  listen: restart samba

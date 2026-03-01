@@ -4,22 +4,22 @@
 - name: Verify Keystone prerequisites - SSD mount
   ansible.builtin.stat:
     path: /mnt/ssd
-  register: ssd_mount_check
+  register: samba_ssd_mount_check
   tags: samba
 
 - name: Verify Keystone prerequisites - Backup mount
   ansible.builtin.stat:
     path: /mnt/backup
-  register: backup_mount_check
+  register: samba_backup_mount_check
   tags: samba
 
 - name: Assert storage prerequisites from Keystone
   ansible.builtin.assert:
     that:
-      - ssd_mount_check.stat.exists
-      - ssd_mount_check.stat.isdir
-      - backup_mount_check.stat.exists
-      - backup_mount_check.stat.isdir
+      - samba_samba_ssd_mount_check.stat.exists
+      - samba_samba_ssd_mount_check.stat.isdir
+      - samba_backup_mount_check.stat.exists
+      - samba_backup_mount_check.stat.isdir
     fail_msg: "Required storage mounts (/mnt/ssd, /mnt/backup) not found. Ensure Keystone has provisioned storage."
     success_msg: "Storage prerequisites satisfied"
   tags: samba
@@ -27,14 +27,14 @@
 - name: Verify Quadlet directory exists
   ansible.builtin.stat:
     path: /etc/containers/systemd
-  register: quadlet_dir_check
+  register: samba_quadlet_dir_check
   tags: samba
 
 - name: Assert Quadlet directory from Keystone
   ansible.builtin.assert:
     that:
-      - quadlet_dir_check.stat.exists
-      - quadlet_dir_check.stat.isdir
+      - samba_quadlet_dir_check.stat.exists
+      - samba_quadlet_dir_check.stat.isdir
     fail_msg: "Quadlet directory /etc/containers/systemd not found. Ensure Keystone container-runtime role has run."
     success_msg: "Quadlet directory exists"
   tags: samba
@@ -83,7 +83,7 @@
   ansible.builtin.debug:
     msg: |
       Samba service deployed successfully
-      
+
       Service: {{ samba_systemd_unit }}
       Shares: {{ samba_shares | map(attribute='name') | join(', ') }}
 
