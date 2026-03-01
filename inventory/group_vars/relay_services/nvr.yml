@@ -1,4 +1,4 @@
-nvr_recordings_dir: "/mnt/backup/nvr/cameras"
+nvr_recordings_dir: "/mnt/backup/shares/nvr/cameras"
 
 nvr_cameras:
   - name: front-door
