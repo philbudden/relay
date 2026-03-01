@@ -16,8 +16,8 @@
 - name: Assert storage prerequisites from Keystone
   ansible.builtin.assert:
     that:
-      - samba_samba_ssd_mount_check.stat.exists
-      - samba_samba_ssd_mount_check.stat.isdir
+      - samba_ssd_mount_check.stat.exists
+      - samba_ssd_mount_check.stat.isdir
       - samba_backup_mount_check.stat.exists
       - samba_backup_mount_check.stat.isdir
     fail_msg: "Required storage mounts (/mnt/ssd, /mnt/backup) not found. Ensure Keystone has provisioned storage."

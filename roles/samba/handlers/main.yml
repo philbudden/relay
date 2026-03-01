@@ -1,7 +1,7 @@
 ---
 # samba role handlers
 
-- name: reload systemd
+- name: Reload systemd daemon
   ansible.builtin.systemd:
     daemon_reload: true
   listen: reload systemd
