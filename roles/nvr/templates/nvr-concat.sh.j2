@@ -58,7 +58,7 @@ for cam_dir in "${CAMERAS_DIR}"/*/; do
   # Ensure daily output directory exists
   mkdir -p "${daily_dir}"
 
-  echo "[nvr-concat] Concatenating $(wc -l < "${filelist}") segments → ${output}"
+  echo "[nvr-concat] Concatenating $(wc -l < "${filelist}") segments -> ${output}"
 
   if ffmpeg -loglevel "${LOGLEVEL}" \
       -f concat \

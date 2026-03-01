@@ -27,7 +27,9 @@ Volume={{ nvr_cameras_dir }}/{{ camera.name }}:/recordings:Z
 # Recorder wrapper script (read-only bind mount)
 Volume={{ nvr_scripts_dir }}/nvr-record.sh:/usr/local/bin/nvr-record.sh:ro,Z
 
-# Run wrapper script as container entrypoint
+# Override image entrypoint (linuxserver/ffmpeg entrypoint is the ffmpeg binary)
+# and run our wrapper script via the shell
+Entrypoint=/bin/sh
 Exec=/usr/local/bin/nvr-record.sh
 
 # Timezone for correct date directory naming

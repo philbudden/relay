@@ -1,9 +1,10 @@
 ---
 # nvr role handlers
 
-- name: Reload systemd
+- name: Reload systemd daemon
   ansible.builtin.systemd:
     daemon_reload: true
+  listen: reload systemd
 
 - name: Restart nvr recorders
   ansible.builtin.systemd:

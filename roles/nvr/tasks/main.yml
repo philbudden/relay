@@ -46,6 +46,17 @@
   no_log: true
   tags: nvr
 
+- name: Assert camera names contain only safe characters
+  ansible.builtin.assert:
+    that:
+      - item.name is match('^[a-z0-9][a-z0-9-]*$')
+    fail_msg: >
+      Camera name '{{ item.name }}' is invalid. Names must match [a-z0-9][a-z0-9-]* —
+      lowercase letters, digits and hyphens only. This name is used in systemd unit names
+      and filesystem paths.
+  loop: "{{ nvr_cameras }}"
+  tags: nvr
+
 # ── Directories ───────────────────────────────────────────────────────────────
 
 - name: Create NVR base directories
@@ -57,6 +68,7 @@
     group: root
   loop:
     - "{{ nvr_base_dir }}"
+    - "{{ nvr_cameras_dir }}"
     - "{{ nvr_scripts_dir }}"
   tags: nvr
 
@@ -110,7 +122,9 @@
     group: root
   loop: "{{ nvr_cameras }}"
   no_log: true
-  notify: reload systemd
+  notify:
+    - reload systemd
+    - restart nvr recorders
   tags: nvr
 
 # ── Quadlet: per-camera recorders ─────────────────────────────────────────────

@@ -24,7 +24,9 @@ Volume={{ nvr_cameras_dir }}:/recordings/cameras:Z
 # Concat + prune script (read-only bind mount)
 Volume={{ nvr_scripts_dir }}/nvr-concat.sh:/usr/local/bin/nvr-concat.sh:ro,Z
 
-# Run the concat script
+# Override image entrypoint (linuxserver/ffmpeg entrypoint is the ffmpeg binary)
+# and run our concat script via the shell
+Entrypoint=/bin/sh
 Exec=/usr/local/bin/nvr-concat.sh
 
 {% if nvr_memory_limit %}
@@ -36,6 +38,4 @@ Memory={{ nvr_memory_limit }}
 Type=oneshot
 RemainAfterExit=no
 # No Restart - timer re-runs the job on schedule; failures surface in journal
-
-[Install]
-WantedBy=multi-user.target
+# No [Install] section - this service is managed exclusively by nvr-concat.timer
