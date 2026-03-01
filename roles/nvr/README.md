@@ -104,10 +104,24 @@ ansible-playbook site.yml --tags nvr --ask-vault-pass
 
 | Variable | Default | Description |
 |---|---|---|
-| `nvr_base_dir` | `{{ relay_storage_root }}/nvr` | NVR base directory |
-| `nvr_cameras_dir` | `{{ nvr_base_dir }}/cameras` | Per-camera recordings |
+| `nvr_base_dir` | `{{ relay_storage_root }}/nvr` | NVR base directory (scripts, state) |
+| `nvr_recordings_dir` | `{{ nvr_base_dir }}/cameras` | **Root directory for all camera recordings** — override to change where footage is saved |
 | `nvr_scripts_dir` | `{{ nvr_base_dir }}/scripts` | Deployed scripts |
 | `nvr_secrets_dir` | `/etc/containers/secrets` | RTSP credential files |
+
+**`nvr_recordings_dir`** is the key variable to override if you want recordings on a different volume:
+
+```yaml
+# inventory/group_vars/relay_services/nvr.yml
+
+# Save to backup RAID instead of SSD (e.g. larger capacity)
+nvr_recordings_dir: "/mnt/backup/nvr/cameras"
+
+# Or any other absolute path (must be on a Keystone-provisioned mount)
+nvr_recordings_dir: "/mnt/ssd/nvr-recordings"
+```
+
+Each camera gets a subdirectory: `{{ nvr_recordings_dir }}/[camera-name]/`
 
 ### Recording Settings
 
@@ -141,11 +155,12 @@ Camera structure:
 ## Storage Layout
 
 ```
+# Default layout (nvr_recordings_dir not set)
 /mnt/ssd/services/nvr/
 ├── scripts/
 │   ├── nvr-record.sh      # Recorder wrapper (deployed by Ansible)
 │   └── nvr-concat.sh      # Concat + prune script (deployed by Ansible)
-└── cameras/
+└── cameras/               ← nvr_recordings_dir default value
     └── [camera-name]/
         ├── segments/
         │   └── YYYY-MM-DD/
@@ -155,6 +170,17 @@ Camera structure:
 
 /etc/containers/secrets/
 └── nvr-cam-[name].env    # NVR_RTSP_URL=... (mode 0600, root-only)
+```
+
+If `nvr_recordings_dir` is overridden (e.g. to save to the backup RAID for extra capacity), only the recordings directory moves — scripts and secrets stay at their defaults:
+
+```
+# nvr_recordings_dir: "/mnt/backup/nvr/cameras"
+/mnt/ssd/services/nvr/scripts/    ← scripts remain on SSD
+/mnt/backup/nvr/cameras/           ← recordings on backup RAID
+    └── [camera-name]/
+        ├── segments/...
+        └── daily/...
 ```
 
 ## Operations

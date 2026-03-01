@@ -128,6 +128,12 @@ Each `name` must exactly match the name you used in the vault file (without the 
 Add any of these to `nvr.yml` to override the defaults:
 
 ```yaml
+# Where to save recordings (default: /mnt/ssd/services/nvr/cameras)
+# Override to use a different volume — e.g. the backup RAID for extra capacity.
+
+# Each camera gets a subdirectory here: [nvr_recordings_dir]/[camera-name]/
+nvr_recordings_dir: "/mnt/backup/nvr/cameras"
+
 # How many days of daily recordings to keep (default: 30)
 nvr_retention_days: 30
 
@@ -416,8 +422,8 @@ ansible-playbook site.yml --tags nvr --ask-vault-pass
 
 | Path | Contents |
 |------|----------|
-| `/mnt/ssd/services/nvr/cameras/[name]/segments/YYYY-MM-DD/` | 5-minute clip files (deleted after concat) |
-| `/mnt/ssd/services/nvr/cameras/[name]/daily/` | 24-hour archive files |
+| `/mnt/ssd/services/nvr/cameras/[name]/segments/YYYY-MM-DD/` | 5-minute clip files — path changes if `nvr_recordings_dir` is set |
+| `/mnt/ssd/services/nvr/cameras/[name]/daily/` | 24-hour archive files — same |
 | `/mnt/ssd/services/nvr/scripts/` | Recording and concat scripts |
 | `/etc/containers/secrets/nvr-cam-[name].env` | Encrypted RTSP URL (0600, root only) |
 | `/etc/containers/systemd/nvr-recorder-[name].container` | Quadlet: per-camera recorder |

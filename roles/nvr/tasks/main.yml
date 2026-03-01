@@ -68,7 +68,7 @@
     group: root
   loop:
     - "{{ nvr_base_dir }}"
-    - "{{ nvr_cameras_dir }}"
+    - "{{ nvr_recordings_dir }}"
     - "{{ nvr_scripts_dir }}"
   tags: nvr
 

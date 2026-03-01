@@ -12,7 +12,13 @@ nvr_full_image: >-
 
 # Storage paths
 nvr_base_dir: "{{ relay_storage_root }}/nvr"
-nvr_cameras_dir: "{{ nvr_base_dir }}/cameras"
+# Directory where per-camera recordings are stored.
+# Override this to save recordings to a different location, e.g.:
+#   nvr_recordings_dir: "/mnt/backup/nvr/cameras"
+#   nvr_recordings_dir: "/mnt/ssd/nvr-recordings"
+# Each camera gets a subdirectory: {{ nvr_recordings_dir }}/[camera-name]/
+nvr_recordings_dir: "{{ nvr_base_dir }}/cameras"
+nvr_cameras_dir: "{{ nvr_recordings_dir }}"  # internal alias - do not override
 nvr_scripts_dir: "{{ nvr_base_dir }}/scripts"
 nvr_secrets_dir: "/etc/containers/secrets"
 
