@@ -14,4 +14,12 @@
   when:
     - nvr_cameras | length > 0
     - nvr_service_restart_enabled | default(true)
+  register: nvr_restart_result
+  # On first deploy the Quadlet-generated units are brand-new and have never
+  # been enabled/started, so systemd reports "Could not find the requested
+  # service". This is expected and safe to ignore — the enable/start tasks
+  # that follow will bring them up. On subsequent runs the units always exist.
+  failed_when:
+    - nvr_restart_result.failed
+    - "'Could not find' not in (nvr_restart_result.msg | default(''))"
   listen: restart nvr recorders
