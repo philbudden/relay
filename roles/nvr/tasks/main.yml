@@ -183,6 +183,10 @@
     enabled: true
     state: started
   loop: "{{ nvr_cameras }}"
+  # In check mode Quadlet files are not written, so daemon-reload generates no
+  # .service units and systemd reports "Could not find". Safe to ignore: the
+  # diff output above already shows what would change.
+  ignore_errors: "{{ ansible_check_mode }}"
   tags: nvr
 
 - name: Enable and start nvr-concat timer
@@ -190,6 +194,7 @@
     name: nvr-concat.timer
     enabled: true
     state: started
+  ignore_errors: "{{ ansible_check_mode }}"
   tags: nvr
 
 # ── Summary ───────────────────────────────────────────────────────────────────
