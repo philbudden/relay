@@ -4,5 +4,5 @@
   "features": {
     "ghcr.io/rio/features/chezmoi:1": {}
   },
-  "postCreateCommand": "bash -lc 'python -m pip install --upgrade pip && pip install ansible ansible-lint yamllint'",
+  "postCreateCommand": "bash -lc 'python -m pip install --upgrade pip && pip install ansible ansible-lint yamllint && chmod o-w ${containerWorkspaceFolder}'",
 }
