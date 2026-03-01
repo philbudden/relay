@@ -2,7 +2,7 @@
 # samba role: SMB/CIFS file sharing service
 
 # Container image configuration
-samba_image: "dperson/samba"
+samba_image: "docker.io/dperson/samba"
 samba_image_tag: "aarch64"  # Architecture-specific stable tag
 samba_use_digest: false
 samba_image_digest: ""  # Optional: Add digest for additional pinning

@@ -10,8 +10,5 @@
   ansible.builtin.systemd:
     name: "{{ samba_systemd_unit }}"
     state: restarted
-  when:
-    - ansible_facts.services is defined
-    - samba_systemd_unit in ansible_facts.services
-    - samba_service_restart_enabled | default(true)
+  when: samba_service_restart_enabled | default(true)
   listen: restart samba

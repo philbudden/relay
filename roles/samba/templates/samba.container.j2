@@ -30,15 +30,15 @@ Volume={{ share.path }}:/shares/{{ share.name }}:{% if share.readonly == 'yes' %
 {% endfor %}
 
 # Environment variables for dperson/samba container
-# User configuration
+# User configuration — USER1, USER2... avoids key deduplication in systemd/Quadlet
 {% for user in samba_users %}
-Environment=USER={{ user.username }};{{ user.password }}{% if user.uid is defined %};{{ user.uid }}{% endif %}{% if user.gid is defined %};{{ user.gid }}{% endif %}
+Environment=USER{{ loop.index }}={{ user.username }};{{ user.password }}{% if user.uid is defined %};{{ user.uid }}{% endif %}{% if user.gid is defined %};{{ user.gid }}{% endif %}
 
 {% endfor %}
 
-# Share configuration
+# Share configuration — SHARE1, SHARE2... for same reason
 {% for share in samba_shares %}
-Environment=SHARE={{ share.name }};/shares/{{ share.name }};{{ share.browseable }};{{ share.readonly }};{{ share.guest }};{{ share.users }};{{ share.users }};{{ share.comment }}
+Environment=SHARE{{ loop.index }}={{ share.name }};/shares/{{ share.name }};{{ share.browseable }};{{ share.readonly }};{{ share.guest }};{{ share.users }};{{ share.users }};{{ share.comment }}
 {% endfor %}
 
 # Global Samba configuration
