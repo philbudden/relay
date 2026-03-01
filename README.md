@@ -51,8 +51,9 @@ This separation ensures:
 ## Current Services
 
 - **Samba** - SMB/CIFS file sharing for NAS storage
+- **NVR** - 24/7 RTSP camera recording with daily archival
 
-See [docs/SERVICES.md](docs/SERVICES.md) for detailed service catalog.
+See [docs/SERVICES.md](docs/SERVICES.md) for the full service catalog.
 
 ## Architecture
 
@@ -190,6 +191,7 @@ Each service has its own configuration file in `inventory/group_vars/relay_servi
 ```
 inventory/group_vars/relay_services/
 ├── samba.yml        # Samba-specific config
+├── nvr.yml          # NVR camera config
 └── vault.yml        # Encrypted secrets (Ansible Vault)
 ```
 
@@ -293,18 +295,28 @@ relay/
 │   └── group_vars/
 │       └── relay_services/
 │           ├── samba.yml       # Samba configuration
+│           ├── nvr.yml         # NVR camera configuration
 │           └── vault.yml       # Encrypted secrets (gitignored)
 │
 ├── roles/
-│   └── samba/                  # Samba service role
+│   ├── samba/                  # Samba service role
+│   │   ├── defaults/main.yml   # Default variables
+│   │   ├── tasks/main.yml      # Deployment tasks
+│   │   ├── templates/          # Quadlet templates
+│   │   ├── handlers/main.yml   # systemd handlers
+│   │   └── README.md           # Role documentation
+│   └── nvr/                    # NVR camera recording role
 │       ├── defaults/main.yml   # Default variables
 │       ├── tasks/main.yml      # Deployment tasks
-│       ├── templates/          # Quadlet templates
+│       ├── templates/          # Quadlet + script templates
 │       ├── handlers/main.yml   # systemd handlers
 │       └── README.md           # Role documentation
 │
 ├── docs/
-│   └── SERVICES.md             # Service catalog
+│   ├── SERVICES.md             # Service catalog
+│   ├── NVR-QUICKSTART.md       # NVR setup guide for new users
+│   ├── QUICKREF.md             # Common commands reference
+│   └── INTEGRATION.md          # Keystone/Relay boundary guide
 │
 └── keystone/                   # Reference to host provisioning
 ```
@@ -392,6 +404,30 @@ systemctl cat samba.service  # View generated unit
 podman run --rm -it dperson/samba --help
 ```
 
+### NVR cameras not recording
+
+**Check recorder status**:
+
+```bash
+systemctl status nvr-recorder-front-door.service
+journalctl -u nvr-recorder-front-door.service -n 50
+```
+
+**Verify segments are being written**:
+
+```bash
+find /mnt/ssd/services/nvr/cameras -name "*.mp4" | tail -5
+```
+
+**Check RTSP URL is reachable** (without exposing credentials):
+
+```bash
+# Test basic TCP connectivity to camera
+nc -zv <camera-ip> 554
+```
+
+See [docs/NVR-QUICKSTART.md](docs/NVR-QUICKSTART.md) for a full troubleshooting guide.
+
 ### Changes not applied
 
 **Ensure handlers run**:
@@ -415,7 +451,10 @@ sudo systemctl restart samba.service
 
 - **[AGENTS.md](AGENTS.md)** - Architectural contract and governance (READ FIRST)
 - **[roles/samba/README.md](roles/samba/README.md)** - Samba service documentation
+- **[roles/nvr/README.md](roles/nvr/README.md)** - NVR camera recording documentation
 - **[docs/SERVICES.md](docs/SERVICES.md)** - Service catalog
+- **[docs/NVR-QUICKSTART.md](docs/NVR-QUICKSTART.md)** - NVR setup guide for new users
+- **[docs/QUICKREF.md](docs/QUICKREF.md)** - Common commands reference
 - **[Keystone README](keystone/README.md)** - Host provisioning system
 
 ## Contributing

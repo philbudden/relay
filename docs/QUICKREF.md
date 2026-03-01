@@ -94,6 +94,30 @@ systemctl disable samba.service
 systemctl daemon-reload
 ```
 
+### NVR Management
+
+```bash
+# Check recorder for a camera (replace front-door with your camera name)
+systemctl status nvr-recorder-front-door.service
+journalctl -u nvr-recorder-front-door.service -f
+
+# Check all NVR containers
+podman ps --filter name=nvr
+
+# Check concat timer (shows when it next runs)
+systemctl list-timers nvr-concat.timer
+
+# Run the daily concat job manually
+systemctl start nvr-concat.service
+journalctl -u nvr-concat.service -f   # watch progress
+
+# Check segment files being written
+find /mnt/ssd/services/nvr/cameras -name "*.mp4" -newer /tmp -ls
+
+# Disk usage by camera
+du -sh /mnt/ssd/services/nvr/cameras/*/
+```
+
 ### Container Management
 
 ```bash
@@ -454,8 +478,10 @@ systemctl status podman-auto-update.timer
 - [AGENTS.md](../AGENTS.md) - Architectural contract
 - [README.md](../README.md) - Main documentation
 - [SERVICES.md](SERVICES.md) - Service catalog
+- [NVR-QUICKSTART.md](NVR-QUICKSTART.md) - NVR setup guide for new users
 - [INTEGRATION.md](INTEGRATION.md) - Keystone/Relay boundary
 - [roles/samba/README.md](../roles/samba/README.md) - Samba docs
+- [roles/nvr/README.md](../roles/nvr/README.md) - NVR docs
 
 ## Getting Help
 
