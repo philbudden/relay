@@ -86,9 +86,9 @@
       
       Service: {{ samba_systemd_unit }}
       Shares: {{ samba_shares | map(attribute='name') | join(', ') }}
-      
+
       Access via: smb://<nas-ip>/{{ samba_shares[0].name }}
-      
+
       SECURITY NOTE: Passwords are stored in environment variables.
       See roles/samba/README.md security section for details.
   tags: samba
