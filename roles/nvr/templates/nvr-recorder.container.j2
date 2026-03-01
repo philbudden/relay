@@ -1,0 +1,49 @@
+# NVR recorder for camera: {{ camera.name }}
+# Managed by Relay - do not edit manually
+# Generated from: roles/nvr/templates/nvr-recorder.container.j2
+
+[Unit]
+Description=NVR RTSP recorder for {{ camera.name }}
+After=network-online.target mnt-ssd.mount
+Wants=network-online.target
+Requires=mnt-ssd.mount
+
+[Container]
+Image={{ nvr_full_image }}
+ContainerName=nvr-recorder-{{ camera.name }}
+
+# RTSP credentials loaded from secrets file (never exposed in Quadlet or journal)
+EnvironmentFile={{ nvr_secrets_dir }}/nvr-cam-{{ camera.name }}.env
+
+# Recording configuration
+Environment=NVR_SEGMENT_DURATION={{ nvr_segment_duration }}
+Environment=NVR_RTSP_TRANSPORT={{ nvr_rtsp_transport }}
+Environment=NVR_FFMPEG_LOGLEVEL={{ nvr_ffmpeg_loglevel }}
+Environment=NVR_RECORDINGS_DIR=/recordings
+
+# Camera recordings volume
+Volume={{ nvr_cameras_dir }}/{{ camera.name }}:/recordings:Z
+
+# Recorder wrapper script (read-only bind mount)
+Volume={{ nvr_scripts_dir }}/nvr-record.sh:/usr/local/bin/nvr-record.sh:ro,Z
+
+# Run wrapper script as container entrypoint
+Exec=/usr/local/bin/nvr-record.sh
+
+# Timezone for correct date directory naming
+Environment=TZ=UTC
+
+{% if nvr_memory_limit %}
+Memory={{ nvr_memory_limit }}
+{% endif %}
+{% if nvr_cpu_shares %}
+CPUShares={{ nvr_cpu_shares }}
+{% endif %}
+
+[Service]
+Restart=always
+RestartSec={{ nvr_restart_sec }}
+TimeoutStartSec={{ nvr_timeout_start_sec }}
+
+[Install]
+WantedBy=multi-user.target

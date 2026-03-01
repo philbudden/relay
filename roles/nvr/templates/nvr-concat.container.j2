@@ -1,0 +1,41 @@
+# NVR daily segment concatenation job
+# Managed by Relay - do not edit manually
+# Generated from: roles/nvr/templates/nvr-concat.container.j2
+# Triggered by: nvr-concat.timer (daily at {{ nvr_concat_timer_oncalendar }})
+
+[Unit]
+Description=NVR daily segment concatenation and retention management
+After=mnt-ssd.mount
+Requires=mnt-ssd.mount
+
+[Container]
+Image={{ nvr_full_image }}
+ContainerName=nvr-concat
+
+# Concat configuration
+Environment=RETENTION_DAYS={{ nvr_retention_days }}
+Environment=NVR_CAMERAS_DIR=/recordings/cameras
+Environment=NVR_FFMPEG_LOGLEVEL={{ nvr_ffmpeg_loglevel }}
+Environment=TZ=UTC
+
+# All camera recordings (read-write: creates daily/, deletes segments/)
+Volume={{ nvr_cameras_dir }}:/recordings/cameras:Z
+
+# Concat + prune script (read-only bind mount)
+Volume={{ nvr_scripts_dir }}/nvr-concat.sh:/usr/local/bin/nvr-concat.sh:ro,Z
+
+# Run the concat script
+Exec=/usr/local/bin/nvr-concat.sh
+
+{% if nvr_memory_limit %}
+Memory={{ nvr_memory_limit }}
+{% endif %}
+
+[Service]
+# Oneshot: systemd considers service complete when container exits
+Type=oneshot
+RemainAfterExit=no
+# No Restart - timer re-runs the job on schedule; failures surface in journal
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,48 @@
+---
+# nvr role: RTSP camera recording and daily archival service
+
+# Container image configuration
+# lscr.io/linuxserver/ffmpeg provides native ARM64 builds
+nvr_image: "lscr.io/linuxserver/ffmpeg"
+nvr_image_tag: "7.0.2-ls25"  # Pin explicitly; update deliberately
+nvr_use_digest: false
+nvr_image_digest: ""  # Optional: add SHA digest for reproducible deploys
+nvr_full_image: >-
+  {{ nvr_image }}{% if nvr_use_digest and nvr_image_digest %}@{{ nvr_image_digest }}{% else %}:{{ nvr_image_tag }}{% endif %}
+
+# Storage paths
+nvr_base_dir: "{{ relay_storage_root }}/nvr"
+nvr_cameras_dir: "{{ nvr_base_dir }}/cameras"
+nvr_scripts_dir: "{{ nvr_base_dir }}/scripts"
+nvr_secrets_dir: "/etc/containers/secrets"
+
+# Recording settings
+nvr_segment_duration: 300       # seconds per segment (5 minutes)
+nvr_retention_days: 30          # rolling window of daily recordings to keep
+
+# Camera list - REQUIRED: define in inventory with Vault-encrypted RTSP URLs
+# nvr_cameras:
+#   - name: front-door
+#     rtsp_url: "{{ vault_nvr_front_door_rtsp_url }}"
+#   - name: back-yard
+#     rtsp_url: "{{ vault_nvr_back_yard_rtsp_url }}"
+nvr_cameras: []
+
+# systemd service settings
+nvr_restart_sec: "30s"
+nvr_timeout_start_sec: "120"
+
+# Concat timer schedule (systemd OnCalendar format)
+nvr_concat_timer_oncalendar: "*-*-* 01:00:00 UTC"
+
+# Quadlet files
+nvr_quadlet_dir: "/etc/containers/systemd"
+nvr_concat_timer_file: "/etc/systemd/system/nvr-concat.timer"
+
+# Resource limits (optional - leave empty to disable)
+nvr_memory_limit: ""   # Example: "2G"
+nvr_cpu_shares: ""     # Example: "512" (half normal priority)
+
+# FFmpeg recorder options
+nvr_rtsp_transport: "tcp"         # tcp is more reliable than udp over WiFi/WAN
+nvr_ffmpeg_loglevel: "warning"    # Reduce journal noise; use "info" to debug

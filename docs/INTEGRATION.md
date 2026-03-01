@@ -243,6 +243,19 @@ firewall_service_ports:
 ## Service-Specific Prerequisites
 
 ### Samba
+...existing content...
+
+### NVR
+
+**Keystone provides**: `/mnt/ssd` mount, Podman, Quadlet  
+**Manual step**: None (RTSP is outbound-only pull; no firewall ports required)  
+**Relay creates**:
+- `/mnt/ssd/services/nvr/cameras/[name]/` (per-camera recording directories)
+- `/mnt/ssd/services/nvr/scripts/` (nvr-record.sh, nvr-concat.sh)
+- `/etc/containers/secrets/nvr-cam-[name].env` (0600, RTSP credentials)
+- `/etc/containers/systemd/nvr-recorder-[name].container` (per-camera Quadlet)
+- `/etc/containers/systemd/nvr-concat.container` (daily concat job Quadlet)
+- `/etc/systemd/system/nvr-concat.timer` (daily timer)
 
 **Keystone provides**:
 - ✅ `/mnt/ssd` mount (writable)

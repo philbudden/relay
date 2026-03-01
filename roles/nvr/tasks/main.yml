@@ -1,0 +1,198 @@
+---
+# nvr role tasks
+
+# ── Prerequisites ────────────────────────────────────────────────────────────
+
+- name: Verify Keystone prerequisite - SSD mount
+  ansible.builtin.stat:
+    path: /mnt/ssd
+  register: nvr_ssd_check
+  tags: nvr
+
+- name: Verify Keystone prerequisite - Quadlet directory
+  ansible.builtin.stat:
+    path: /etc/containers/systemd
+  register: nvr_quadlet_dir_check
+  tags: nvr
+
+- name: Assert storage and Quadlet prerequisites from Keystone
+  ansible.builtin.assert:
+    that:
+      - nvr_ssd_check.stat.exists
+      - nvr_ssd_check.stat.isdir
+      - nvr_quadlet_dir_check.stat.exists
+      - nvr_quadlet_dir_check.stat.isdir
+    fail_msg: "Required Keystone prerequisites not found (/mnt/ssd, /etc/containers/systemd). Run Keystone playbook first."
+    success_msg: "Keystone prerequisites satisfied"
+  tags: nvr
+
+- name: Assert nvr_cameras list is defined and non-empty
+  ansible.builtin.assert:
+    that:
+      - nvr_cameras is defined
+      - nvr_cameras | length > 0
+    fail_msg: "nvr_cameras must be defined with at least one camera. Set in inventory/group_vars/relay_services/nvr.yml"
+  tags: nvr
+
+- name: Assert all camera RTSP URLs are set
+  ansible.builtin.assert:
+    that:
+      - item.name is defined
+      - item.name | length > 0
+      - item.rtsp_url is defined
+      - item.rtsp_url | length > 0
+    fail_msg: "Camera '{{ item.name | default('unnamed') }}' is missing rtsp_url. Set via Ansible Vault."
+  loop: "{{ nvr_cameras }}"
+  no_log: true
+  tags: nvr
+
+# ── Directories ───────────────────────────────────────────────────────────────
+
+- name: Create NVR base directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: '0755'
+    owner: root
+    group: root
+  loop:
+    - "{{ nvr_base_dir }}"
+    - "{{ nvr_scripts_dir }}"
+  tags: nvr
+
+- name: Create per-camera recording directories
+  ansible.builtin.file:
+    path: "{{ nvr_cameras_dir }}/{{ item.name }}"
+    state: directory
+    mode: '0755'
+    owner: root
+    group: root
+  loop: "{{ nvr_cameras }}"
+  tags: nvr
+
+- name: Ensure secrets directory exists
+  ansible.builtin.file:
+    path: "{{ nvr_secrets_dir }}"
+    state: directory
+    mode: '0700'
+    owner: root
+    group: root
+  tags: nvr
+
+# ── Scripts ───────────────────────────────────────────────────────────────────
+
+- name: Deploy RTSP recorder wrapper script
+  ansible.builtin.template:
+    src: nvr-record.sh.j2
+    dest: "{{ nvr_scripts_dir }}/nvr-record.sh"
+    mode: '0755'
+    owner: root
+    group: root
+  tags: nvr
+
+- name: Deploy concat and retention script
+  ansible.builtin.template:
+    src: nvr-concat.sh.j2
+    dest: "{{ nvr_scripts_dir }}/nvr-concat.sh"
+    mode: '0755'
+    owner: root
+    group: root
+  tags: nvr
+
+# ── Secrets ───────────────────────────────────────────────────────────────────
+
+- name: Deploy per-camera secrets files
+  ansible.builtin.copy:
+    content: "NVR_RTSP_URL={{ item.rtsp_url }}\n"
+    dest: "{{ nvr_secrets_dir }}/nvr-cam-{{ item.name }}.env"
+    mode: '0600'
+    owner: root
+    group: root
+  loop: "{{ nvr_cameras }}"
+  no_log: true
+  notify: reload systemd
+  tags: nvr
+
+# ── Quadlet: per-camera recorders ─────────────────────────────────────────────
+
+- name: Deploy per-camera recorder Quadlet containers
+  ansible.builtin.template:
+    src: nvr-recorder.container.j2
+    dest: "{{ nvr_quadlet_dir }}/nvr-recorder-{{ item.name }}.container"
+    mode: '0644'
+    owner: root
+    group: root
+  loop: "{{ nvr_cameras }}"
+  vars:
+    camera: "{{ item }}"
+  notify:
+    - reload systemd
+    - restart nvr recorders
+  tags: nvr
+
+# ── Quadlet: concat job ───────────────────────────────────────────────────────
+
+- name: Deploy concat Quadlet container
+  ansible.builtin.template:
+    src: nvr-concat.container.j2
+    dest: "{{ nvr_quadlet_dir }}/nvr-concat.container"
+    mode: '0644'
+    owner: root
+    group: root
+  notify: reload systemd
+  tags: nvr
+
+# ── systemd timer ─────────────────────────────────────────────────────────────
+
+- name: Deploy nvr-concat systemd timer
+  ansible.builtin.template:
+    src: nvr-concat.timer.j2
+    dest: "{{ nvr_concat_timer_file }}"
+    mode: '0644'
+    owner: root
+    group: root
+  notify: reload systemd
+  tags: nvr
+
+# ── Enable and start services ─────────────────────────────────────────────────
+
+- name: Enable and start per-camera recorder services
+  ansible.builtin.systemd:
+    name: "nvr-recorder-{{ item.name }}.service"
+    enabled: true
+    state: started
+    daemon_reload: true
+  loop: "{{ nvr_cameras }}"
+  tags: nvr
+
+- name: Enable and start nvr-concat timer
+  ansible.builtin.systemd:
+    name: nvr-concat.timer
+    enabled: true
+    state: started
+    daemon_reload: true
+  tags: nvr
+
+# ── Summary ───────────────────────────────────────────────────────────────────
+
+- name: Display NVR service information
+  ansible.builtin.debug:
+    msg: |
+      NVR service deployed successfully
+
+      Recorders ({{ nvr_cameras | length }} camera(s)):
+      {% for cam in nvr_cameras %}
+        - nvr-recorder-{{ cam.name }}.service
+      {% endfor %}
+
+      Daily concat timer: nvr-concat.timer
+      Schedule: {{ nvr_concat_timer_oncalendar }}
+      Retention: {{ nvr_retention_days }} days
+
+      Recordings: {{ nvr_cameras_dir }}/[camera]/
+
+      Check recorders:  systemctl status nvr-recorder-[name].service
+      Check timer:      systemctl list-timers nvr-concat.timer
+      View logs:        journalctl -u nvr-recorder-[name].service -f
+      Manual concat:    systemctl start nvr-concat.service
+  tags: nvr

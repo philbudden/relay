@@ -1,0 +1,16 @@
+---
+# nvr role handlers
+
+- name: Reload systemd
+  ansible.builtin.systemd:
+    daemon_reload: true
+
+- name: Restart nvr recorders
+  ansible.builtin.systemd:
+    name: "nvr-recorder-{{ item.name }}.service"
+    state: restarted
+  loop: "{{ nvr_cameras }}"
+  when:
+    - nvr_cameras | length > 0
+    - nvr_service_restart_enabled | default(true)
+  listen: restart nvr recorders

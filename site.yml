@@ -47,6 +47,10 @@
   roles:
     - role: samba
       tags: ['samba', 'file-sharing']
+
+    - role: nvr
+      tags: ['nvr', 'cameras', 'recording']
+      when: nvr_cameras | default([]) | length > 0
   
   post_tasks:
     - name: Display completion summary
@@ -56,6 +60,7 @@
           
           Active services:
             - Samba (SMB/CIFS file sharing)
+            - NVR (RTSP camera recording) [if nvr_cameras configured]
           
           Next steps:
             - Check status: systemctl status samba.service

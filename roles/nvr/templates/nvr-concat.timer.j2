@@ -1,0 +1,17 @@
+# NVR concat timer
+# Managed by Relay - do not edit manually
+# Generated from: roles/nvr/templates/nvr-concat.timer.j2
+
+[Unit]
+Description=Daily NVR segment concatenation (triggers nvr-concat.service)
+Requires=nvr-concat.service
+
+[Timer]
+# Fire at 01:00 UTC daily - well after midnight so yesterday's segments are complete
+OnCalendar={{ nvr_concat_timer_oncalendar }}
+# Re-run after system downtime if the scheduled time was missed
+Persistent=true
+Unit=nvr-concat.service
+
+[Install]
+WantedBy=timers.target

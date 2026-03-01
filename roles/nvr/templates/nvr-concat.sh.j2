@@ -1,0 +1,91 @@
+#!/bin/sh
+# nvr-concat.sh - Daily segment concatenation and retention management
+# Managed by Relay - do not edit manually
+# Deployed from: roles/nvr/templates/nvr-concat.sh.j2
+#
+# Environment variables (set via Quadlet Environment=):
+#   RETENTION_DAYS  - Number of daily recordings to retain (default: 30)
+#   NVR_CAMERAS_DIR - Camera recordings root inside container (default: /recordings/cameras)
+#   NVR_FFMPEG_LOGLEVEL - FFmpeg log verbosity (default: warning)
+
+set -eu
+
+RETENTION_DAYS="${RETENTION_DAYS:-30}"
+CAMERAS_DIR="${NVR_CAMERAS_DIR:-/recordings/cameras}"
+LOGLEVEL="${NVR_FFMPEG_LOGLEVEL:-warning}"
+YESTERDAY="$(date -u -d yesterday +%Y-%m-%d)"
+
+echo "[nvr-concat] Starting daily concatenation for ${YESTERDAY}"
+echo "[nvr-concat] Cameras root: ${CAMERAS_DIR}"
+echo "[nvr-concat] Retention: ${RETENTION_DAYS} days"
+
+ERRORS=0
+
+for cam_dir in "${CAMERAS_DIR}"/*/; do
+  # Skip if glob matched nothing
+  [ -d "${cam_dir}" ] || continue
+
+  cam_name="$(basename "${cam_dir}")"
+  segments_dir="${cam_dir}segments/${YESTERDAY}"
+  daily_dir="${cam_dir}daily"
+  output="${daily_dir}/${YESTERDAY}.mp4"
+  filelist="$(mktemp /tmp/nvr-concat-XXXXXX.txt)"
+
+  echo "[nvr-concat] Processing camera: ${cam_name}"
+
+  # Skip if no segments exist for yesterday
+  if [ ! -d "${segments_dir}" ]; then
+    echo "[nvr-concat] WARN: No segments directory for ${cam_name}/${YESTERDAY} - skipping"
+    rm -f "${filelist}"
+    continue
+  fi
+
+  # Find all MP4 segments sorted by filename (HH-MM-SS.mp4)
+  find "${segments_dir}" -name "*.mp4" | sort > "${filelist}.paths"
+
+  if [ ! -s "${filelist}.paths" ]; then
+    echo "[nvr-concat] WARN: No MP4 files found for ${cam_name}/${YESTERDAY} - skipping"
+    rm -f "${filelist}" "${filelist}.paths"
+    continue
+  fi
+
+  # Build FFmpeg concat file list format
+  while IFS= read -r f; do
+    printf "file '%s'\n" "${f}"
+  done < "${filelist}.paths" > "${filelist}"
+  rm -f "${filelist}.paths"
+
+  # Ensure daily output directory exists
+  mkdir -p "${daily_dir}"
+
+  echo "[nvr-concat] Concatenating $(wc -l < "${filelist}") segments → ${output}"
+
+  if ffmpeg -loglevel "${LOGLEVEL}" \
+      -f concat \
+      -safe 0 \
+      -i "${filelist}" \
+      -c copy \
+      "${output}"; then
+    echo "[nvr-concat] OK: ${cam_name}/${YESTERDAY}.mp4"
+    rm -f "${filelist}"
+    rm -rf "${segments_dir}"
+    echo "[nvr-concat] Deleted segments: ${segments_dir}"
+  else
+    echo "[nvr-concat] ERROR: Concatenation failed for ${cam_name}/${YESTERDAY}" >&2
+    rm -f "${filelist}"
+    ERRORS=$((ERRORS + 1))
+    # Do NOT delete segments on failure - preserve for manual recovery
+    continue
+  fi
+
+  # Prune daily recordings older than RETENTION_DAYS for this camera
+  find "${daily_dir}" -name "*.mp4" -mtime "+${RETENTION_DAYS}" -delete
+  echo "[nvr-concat] Pruned ${cam_name}/daily/ files older than ${RETENTION_DAYS} days"
+done
+
+if [ "${ERRORS}" -gt 0 ]; then
+  echo "[nvr-concat] FAILED: ${ERRORS} camera(s) had errors" >&2
+  exit 1
+fi
+
+echo "[nvr-concat] Done"

@@ -1,0 +1,37 @@
+#!/bin/sh
+# nvr-record.sh - RTSP recorder wrapper
+# Managed by Relay - do not edit manually
+# Deployed from: roles/nvr/templates/nvr-record.sh.j2
+#
+# Environment variables (set via Quadlet EnvironmentFile + Environment):
+#   NVR_RTSP_URL         - Full RTSP URL including credentials (required)
+#   NVR_SEGMENT_DURATION - Segment length in seconds (default: 300)
+#   NVR_RTSP_TRANSPORT   - Transport protocol: tcp or udp (default: tcp)
+#   NVR_FFMPEG_LOGLEVEL  - FFmpeg log verbosity (default: warning)
+#   NVR_RECORDINGS_DIR   - Base recordings path inside container (default: /recordings)
+
+set -eu
+
+RECORDINGS_DIR="${NVR_RECORDINGS_DIR:-/recordings}"
+SEGMENT_DURATION="${NVR_SEGMENT_DURATION:-300}"
+RTSP_TRANSPORT="${NVR_RTSP_TRANSPORT:-tcp}"
+LOGLEVEL="${NVR_FFMPEG_LOGLEVEL:-warning}"
+TODAY="$(date -u +%Y-%m-%d)"
+
+# Create today's segment directory (FFmpeg does not create subdirectories)
+mkdir -p "${RECORDINGS_DIR}/segments/${TODAY}"
+
+# Run FFmpeg - exits when date changes (new date dir doesn't exist yet)
+# systemd Restart=always will restart the container, creating the new date dir
+exec ffmpeg \
+  -loglevel "${LOGLEVEL}" \
+  -rtsp_transport "${RTSP_TRANSPORT}" \
+  -i "${NVR_RTSP_URL}" \
+  -c copy \
+  -f segment \
+  -segment_time "${SEGMENT_DURATION}" \
+  -segment_format mp4 \
+  -segment_atclocktime 1 \
+  -strftime 1 \
+  -reset_timestamps 1 \
+  "${RECORDINGS_DIR}/segments/%Y-%m-%d/%H-%M-%S.mp4"
