@@ -4,7 +4,7 @@
 # Container image configuration
 # lscr.io/linuxserver/ffmpeg provides native ARM64 builds
 nvr_image: "lscr.io/linuxserver/ffmpeg"
-nvr_image_tag: "7.0.2-ls25"  # Pin explicitly; update deliberately
+nvr_image_tag: "4.3-cli-ls43"  # Pin explicitly; update deliberately
 nvr_use_digest: false
 nvr_image_digest: ""  # Optional: add SHA digest for reproducible deploys
 nvr_full_image: >-
