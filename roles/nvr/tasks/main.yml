@@ -170,12 +170,18 @@
 
 # ── Enable and start services ─────────────────────────────────────────────────
 
+# Flush handlers now so systemctl daemon-reload runs before we attempt to start
+# services. Quadlet generates .service units during daemon-reload; without this,
+# the units don't exist yet and systemd reports "service not found".
+- name: Flush handlers to trigger systemd daemon-reload
+  ansible.builtin.meta: flush_handlers
+  tags: nvr
+
 - name: Enable and start per-camera recorder services
   ansible.builtin.systemd:
     name: "nvr-recorder-{{ item.name }}.service"
     enabled: true
     state: started
-    daemon_reload: true
   loop: "{{ nvr_cameras }}"
   tags: nvr
 
@@ -184,7 +190,6 @@
     name: nvr-concat.timer
     enabled: true
     state: started
-    daemon_reload: true
   tags: nvr
 
 # ── Summary ───────────────────────────────────────────────────────────────────
