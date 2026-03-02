@@ -64,6 +64,9 @@
     - role: gitea
       tags: ['gitea', 'git']
 
+    - role: gitea-github-sync
+      tags: ['gitea-github-sync', 'gitea', 'git']
+
   post_tasks:
     - name: Display completion summary
       ansible.builtin.debug:

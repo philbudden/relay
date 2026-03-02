@@ -1,0 +1,15 @@
+# Gitea GitHub sync timer
+# Managed by Relay - do not edit manually
+# Generated from: roles/gitea-github-sync/templates/gitea-github-sync.timer.j2
+
+[Unit]
+Description=Gitea GitHub mirror sync (triggers gitea-github-sync.service)
+
+[Timer]
+OnCalendar={{ gitea_sync_timer_oncalendar }}
+# Re-run after system downtime if the scheduled time was missed
+Persistent=true
+Unit=gitea-github-sync.service
+
+[Install]
+WantedBy=timers.target

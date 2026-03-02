@@ -1,0 +1,36 @@
+# Gitea GitHub mirror sync container
+# Managed by Relay - do not edit manually
+# Generated from: roles/gitea-github-sync/templates/gitea-github-sync.container.j2
+# Triggered by: gitea-github-sync.timer
+
+[Unit]
+Description=Gitea GitHub repository mirror sync
+After=network-online.target gitea.service
+Wants=network-online.target
+
+[Container]
+Image={{ gitea_sync_image }}
+ContainerName=gitea-github-sync
+AutoUpdate=registry
+
+# Use host networking to reach Gitea on localhost:3000
+Network=host
+
+# Secrets: GITHUB_TOKEN and GITEA_TOKEN
+EnvironmentFile={{ gitea_sync_secrets_file }}
+
+# Non-secret configuration
+Environment=GITHUB_USER={{ gitea_sync_github_user }}
+Environment=GITEA_URL={{ gitea_sync_gitea_url }}
+Environment=MIRROR_INTERVAL={{ gitea_sync_mirror_interval }}
+
+# Sync script (read-only bind mount)
+Volume={{ gitea_sync_script_path }}:/sync.py:ro,Z
+
+Exec=python3 /sync.py
+
+[Service]
+# Oneshot: systemd considers the service complete when the container exits
+Type=oneshot
+RemainAfterExit=no
+# No [Install] section - managed exclusively by gitea-github-sync.timer

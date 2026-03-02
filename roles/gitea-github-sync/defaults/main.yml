@@ -1,0 +1,31 @@
+---
+# gitea-github-sync role: mirror all GitHub repos into Gitea as pull mirrors
+
+# Python container image - pin explicitly; update deliberately
+gitea_sync_image: "docker.io/library/python:3.13-alpine3.21"
+
+# GitHub configuration
+gitea_sync_github_user: ""  # Required: your GitHub username, e.g. "philbudden"
+
+# Gitea configuration
+gitea_sync_gitea_url: "http://localhost:3000"
+
+# Mirror interval passed to Gitea's pull mirror scheduler.
+# Should match the timer frequency.
+gitea_sync_mirror_interval: "6h0m0s"
+
+# Storage paths
+gitea_sync_base_dir: "{{ relay_storage_root }}/gitea-github-sync"
+gitea_sync_scripts_dir: "{{ gitea_sync_base_dir }}/scripts"
+gitea_sync_script_path: "{{ gitea_sync_scripts_dir }}/gitea-github-sync.py"
+
+# Secrets file - contains GITHUB_TOKEN and GITEA_TOKEN
+gitea_sync_secrets_file: "/etc/containers/secrets/gitea-github-sync.env"
+
+# Quadlet and systemd paths
+gitea_sync_quadlet_file: "/etc/containers/systemd/gitea-github-sync.container"
+gitea_sync_timer_file: "/etc/systemd/system/gitea-github-sync.timer"
+gitea_sync_systemd_unit: "gitea-github-sync.service"
+
+# Timer schedule: run at 00:00, 06:00, 12:00, 18:00 UTC
+gitea_sync_timer_oncalendar: "*-*-* 00,06,12,18:00:00"

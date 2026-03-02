@@ -1,0 +1,96 @@
+---
+# gitea-github-sync role tasks
+
+- name: Verify Gitea is reachable
+  ansible.builtin.uri:
+    url: "{{ gitea_sync_gitea_url }}/api/v1/version"
+    method: GET
+    status_code: 200
+  register: gitea_version_check
+  tags: gitea-github-sync
+
+- name: Assert Gitea is running
+  ansible.builtin.assert:
+    that: gitea_version_check.status == 200
+    fail_msg: "Gitea is not reachable at {{ gitea_sync_gitea_url }}. Ensure gitea.service is running."
+    success_msg: "Gitea is reachable ({{ gitea_version_check.json.version }})"
+  tags: gitea-github-sync
+
+- name: Create scripts directory
+  ansible.builtin.file:
+    path: "{{ gitea_sync_scripts_dir }}"
+    state: directory
+    mode: '0755'
+    owner: root
+    group: root
+  tags: gitea-github-sync
+
+- name: Deploy sync script
+  ansible.builtin.copy:
+    src: gitea-github-sync.py
+    dest: "{{ gitea_sync_script_path }}"
+    mode: '0755'
+    owner: root
+    group: root
+  tags: gitea-github-sync
+
+- name: Deploy secrets file
+  ansible.builtin.template:
+    src: gitea-github-sync.env.j2
+    dest: "{{ gitea_sync_secrets_file }}"
+    mode: '0600'
+    owner: root
+    group: root
+  no_log: true
+  tags: gitea-github-sync
+
+- name: Deploy Quadlet container definition
+  ansible.builtin.template:
+    src: gitea-github-sync.container.j2
+    dest: "{{ gitea_sync_quadlet_file }}"
+    mode: '0644'
+    owner: root
+    group: root
+  notify: reload systemd
+  tags: gitea-github-sync
+
+- name: Deploy systemd timer
+  ansible.builtin.template:
+    src: gitea-github-sync.timer.j2
+    dest: "{{ gitea_sync_timer_file }}"
+    mode: '0644'
+    owner: root
+    group: root
+  notify: reload systemd
+  tags: gitea-github-sync
+
+- name: Flush handlers to trigger systemd daemon-reload
+  ansible.builtin.meta: flush_handlers
+  tags: gitea-github-sync
+
+- name: Enable and start sync timer
+  ansible.builtin.systemd:
+    name: gitea-github-sync.timer
+    enabled: true
+    state: started
+  ignore_errors: "{{ ansible_check_mode }}"
+  tags: gitea-github-sync
+
+- name: Display gitea-github-sync information
+  ansible.builtin.debug:
+    msg: |
+      Gitea GitHub sync deployed successfully
+
+      Timer:    gitea-github-sync.timer
+      Schedule: {{ gitea_sync_timer_oncalendar }}
+      GitHub:   {{ gitea_sync_github_user }}
+      Gitea:    {{ gitea_sync_gitea_url }}
+
+      Run manually:  systemctl start gitea-github-sync.service
+      View logs:     journalctl -u gitea-github-sync.service -f
+      Check timer:   systemctl list-timers gitea-github-sync.timer
+
+      First sync: run the playbook then trigger manually with:
+        ansible -i inventory/hosts.yml relay_services -b -m systemd \
+          -a "name=gitea-github-sync.service state=started"
+  tags: gitea-github-sync

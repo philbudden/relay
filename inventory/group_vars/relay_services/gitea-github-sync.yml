@@ -1,0 +1,8 @@
+---
+# gitea-github-sync configuration
+# Mirrors all GitHub repos owned by gitea_sync_github_user into Gitea.
+
+gitea_sync_github_user: "philbudden"
+gitea_sync_gitea_url: "http://localhost:3000"
+gitea_sync_mirror_interval: "6h0m0s"
+gitea_sync_timer_oncalendar: "*-*-* 00,06,12,18:00:00"
