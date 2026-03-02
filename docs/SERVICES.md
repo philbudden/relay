@@ -30,6 +30,27 @@ Exposes NAS storage via SMB/CIFS protocol for network file sharing.
 
 ---
 
+### Gitea GitHub Mirror Sync
+
+**Status**: ✅ Implemented
+**Role**: `roles/gitea-github-sync`
+**Documentation**: [roles/gitea-github-sync/README.md](../roles/gitea-github-sync/README.md)
+
+Automatically mirrors all GitHub repos owned by the configured user into Gitea as pull mirrors.
+
+**Features**:
+- Discovers all owned GitHub repos (public and private) and creates Gitea pull mirrors
+- Idempotent — skips repos already mirrored
+- Privacy-preserving — private GitHub repos stay private in Gitea
+- Timer-driven — runs every 6 hours to pick up newly created repos
+- Stdlib-only Python script, no pip dependencies
+
+**Tags**: `gitea-github-sync`, `gitea`, `git`
+
+> ⚠️ **Rebuild note**: Gitea API tokens require explicit scope selection. See the role README for the full step-by-step rebuild procedure including required token scopes.
+
+---
+
 ### NVR (RTSP Camera Recording)
 
 **Status**: ✅ Implemented  
