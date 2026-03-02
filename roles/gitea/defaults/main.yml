@@ -21,11 +21,6 @@ gitea_app_name: "Gitea"
 gitea_domain: ""         # Set to host FQDN or IP, e.g. "nas.local"
 gitea_timezone: "UTC"
 
-# Run Gitea as a specific user inside the container
-# Gitea image default UID/GID is 1000
-gitea_run_uid: 1000
-gitea_run_gid: 1000
-
 # Systemd service configuration
 gitea_systemd_unit: "gitea.service"
 gitea_restart_policy: "always"

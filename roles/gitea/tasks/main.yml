@@ -36,8 +36,8 @@
     path: "{{ gitea_data_dir }}"
     state: directory
     mode: '0755'
-    owner: "{{ gitea_run_uid }}"
-    group: "{{ gitea_run_gid }}"
+    owner: root
+    group: root
   tags: gitea
 
 - name: Deploy Gitea Quadlet container definition

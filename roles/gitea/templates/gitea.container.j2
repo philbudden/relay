@@ -21,9 +21,6 @@ PublishPort={{ gitea_ssh_port }}:22
 # Persistent data volume
 Volume={{ gitea_data_dir }}:/data:Z
 
-# Run as configured user
-User={{ gitea_run_uid }}:{{ gitea_run_gid }}
-
 # Environment configuration
 Environment=USER=git
 Environment=GITEA__server__DOMAIN={{ gitea_domain | default('localhost') }}
