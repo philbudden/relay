@@ -132,6 +132,28 @@ Each camera gets a subdirectory: `{{ nvr_recordings_dir }}/[camera-name]/`
 | `nvr_rtsp_transport` | `tcp` | RTSP transport (`tcp` or `udp`) |
 | `nvr_ffmpeg_loglevel` | `warning` | FFmpeg log verbosity |
 
+### Timestamp Overlay
+
+Burns the recording datetime into the concatenated daily video.
+
+| Variable | Default | Description |
+|---|---|---|
+| `nvr_timestamp_overlay` | `false` | Enable datetime overlay (requires re-encoding) |
+| `nvr_timestamp_fontsize` | `28` | Font size in pixels |
+
+When enabled, set in your inventory:
+
+```yaml
+nvr_timestamp_overlay: true
+nvr_timestamp_fontsize: 28   # optional
+```
+
+**How it works**: The overlay uses the first segment's filename (`HH-MM-SS.mp4`) to determine the recording start time. FFmpeg's `drawtext` filter maps each frame's PTS to the correct wall-clock time. Timestamps are displayed in `YYYY-MM-DD HH:MM:SS` format in the bottom-left corner.
+
+**Performance note**: Re-encoding `libx264 -preset fast -crf 23` on ARM64 (CM5) processes approximately 2–4× realtime. A 24-hour recording takes 6–12 hours to re-encode. Ensure the concat job (`01:00 UTC`) completes before the next day's job fires.
+
+**Font**: A TrueType font is required. The container image is probed for fonts at common Alpine and Debian paths. If none is found, the job fails with a clear error. To provide a font manually, set `NVR_TIMESTAMP_FONT` in the container environment to a path reachable inside the container.
+
 ### Scheduling
 
 | Variable | Default | Description |

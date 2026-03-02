@@ -52,3 +52,10 @@ nvr_cpu_shares: ""     # Example: "512" (half normal priority)
 # FFmpeg recorder options
 nvr_rtsp_transport: "tcp"         # tcp is more reliable than udp over WiFi/WAN
 nvr_ffmpeg_loglevel: "warning"    # Reduce journal noise; use "info" to debug
+
+# Timestamp overlay for daily concatenated recordings
+# When enabled, the recording datetime is burned into the video during concatenation.
+# Disabled by default: overlay requires re-encoding (CPU-intensive on ARM64).
+# Enable in inventory: nvr_timestamp_overlay: true
+nvr_timestamp_overlay: false
+nvr_timestamp_fontsize: 28

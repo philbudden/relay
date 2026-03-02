@@ -18,6 +18,10 @@ Environment=NVR_CAMERAS_DIR=/recordings/cameras
 Environment=NVR_FFMPEG_LOGLEVEL={{ nvr_ffmpeg_loglevel }}
 Environment=TZ=UTC
 
+# Timestamp overlay — burns recording datetime into video (requires re-encoding)
+Environment=NVR_TIMESTAMP_OVERLAY={{ nvr_timestamp_overlay | bool | int }}
+Environment=NVR_TIMESTAMP_FONTSIZE={{ nvr_timestamp_fontsize }}
+
 # All camera recordings (read-write: creates daily/, deletes segments/)
 Volume={{ nvr_cameras_dir }}:/recordings/cameras:Z
 
