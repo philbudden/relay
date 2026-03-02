@@ -1,5 +1,7 @@
 nvr_recordings_dir: "/mnt/backup/shares/nvr/cameras"
 
+nvr_retention_days: 7
+
 nvr_cameras:
   - name: front-door
     rtsp_url: "{{ vault_nvr_front_door_rtsp_url }}"
