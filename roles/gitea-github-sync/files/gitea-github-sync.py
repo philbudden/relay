@@ -35,8 +35,17 @@ def github_get(path):
             "User-Agent": "gitea-github-sync/1.0",
         },
     )
-    with urllib.request.urlopen(req) as resp:
-        return json.loads(resp.read())
+    try:
+        with urllib.request.urlopen(req) as resp:
+            return json.loads(resp.read())
+    except urllib.error.HTTPError as e:
+        body = {}
+        try:
+            body = json.loads(e.read())
+        except Exception:
+            pass
+        print(f"ERROR: GitHub API {path} returned HTTP {e.code}: {body.get('message', body)}", file=sys.stderr)
+        sys.exit(1)
 
 
 def gitea_request(method, path, data=None):
@@ -77,7 +86,7 @@ def get_github_repos():
     page = 1
     while True:
         page_repos = github_get(
-            f"/user/repos?type=owner&affiliation=owner&per_page=100&page={page}"
+            f"/user/repos?affiliation=owner&per_page=100&page={page}"
         )
         if not page_repos:
             break
