@@ -1,0 +1,52 @@
+# Gitea Self-Hosted Git Service
+# Managed by Relay - Do not edit manually
+# Generated from: roles/gitea/templates/gitea.container.j2
+
+[Unit]
+Description=Gitea self-hosted Git service
+Documentation=https://docs.gitea.com
+After=network-online.target mnt-ssd.mount
+Wants=network-online.target
+Requires=mnt-ssd.mount
+
+[Container]
+Image={{ gitea_full_image }}
+ContainerName=gitea
+AutoUpdate=registry
+
+# Port bindings
+PublishPort={{ gitea_http_port }}:3000
+PublishPort={{ gitea_ssh_port }}:22
+
+# Persistent data volume
+Volume={{ gitea_data_dir }}:/data:Z
+
+# Run as configured user
+User={{ gitea_run_uid }}:{{ gitea_run_gid }}
+
+# Environment configuration
+Environment=USER=git
+Environment=GITEA__server__DOMAIN={{ gitea_domain | default('localhost') }}
+Environment=GITEA__server__HTTP_PORT=3000
+Environment=GITEA__server__SSH_PORT={{ gitea_ssh_port }}
+Environment=GITEA__server__ROOT_URL=http://{{ gitea_domain | default('localhost') }}:{{ gitea_http_port }}/
+Environment=TZ={{ gitea_timezone }}
+{% if gitea_app_name %}
+Environment=GITEA__DEFAULT__APP_NAME={{ gitea_app_name }}
+{% endif %}
+
+# Resource limits (optional)
+{% if gitea_memory_limit %}
+Memory={{ gitea_memory_limit }}
+{% endif %}
+{% if gitea_cpu_shares %}
+CPUShares={{ gitea_cpu_shares }}
+{% endif %}
+
+[Service]
+Restart={{ gitea_restart_policy }}
+RestartSec={{ gitea_restart_sec }}
+TimeoutStartSec={{ gitea_timeout_start_sec }}
+
+[Install]
+WantedBy=multi-user.target

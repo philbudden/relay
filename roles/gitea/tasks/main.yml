@@ -1,0 +1,75 @@
+---
+# gitea role tasks
+
+- name: Verify Keystone prerequisites - SSD mount
+  ansible.builtin.stat:
+    path: /mnt/ssd
+  register: gitea_ssd_mount_check
+  tags: gitea
+
+- name: Assert storage prerequisite from Keystone
+  ansible.builtin.assert:
+    that:
+      - gitea_ssd_mount_check.stat.exists
+      - gitea_ssd_mount_check.stat.isdir
+    fail_msg: "Required storage mount (/mnt/ssd) not found. Ensure Keystone has provisioned storage."
+    success_msg: "Storage prerequisite satisfied"
+  tags: gitea
+
+- name: Verify Quadlet directory exists
+  ansible.builtin.stat:
+    path: /etc/containers/systemd
+  register: gitea_quadlet_dir_check
+  tags: gitea
+
+- name: Assert Quadlet directory from Keystone
+  ansible.builtin.assert:
+    that:
+      - gitea_quadlet_dir_check.stat.exists
+      - gitea_quadlet_dir_check.stat.isdir
+    fail_msg: "Quadlet directory /etc/containers/systemd not found. Ensure Keystone container-runtime role has run."
+    success_msg: "Quadlet directory exists"
+  tags: gitea
+
+- name: Create Gitea data directory
+  ansible.builtin.file:
+    path: "{{ gitea_data_dir }}"
+    state: directory
+    mode: '0755'
+    owner: root
+    group: root
+  tags: gitea
+
+- name: Deploy Gitea Quadlet container definition
+  ansible.builtin.template:
+    src: gitea.container.j2
+    dest: "{{ gitea_quadlet_file }}"
+    mode: '0644'
+    owner: root
+    group: root
+  notify:
+    - reload systemd
+    - restart gitea
+  tags: gitea
+
+- name: Enable and start Gitea service
+  ansible.builtin.systemd:
+    name: "{{ gitea_systemd_unit }}"
+    enabled: true
+    state: started
+    daemon_reload: true
+  tags: gitea
+
+- name: Display Gitea service information
+  ansible.builtin.debug:
+    msg: |
+      Gitea service deployed successfully
+
+      Service: {{ gitea_systemd_unit }}
+      Web UI:  http://{{ gitea_domain | default('<nas-ip>') }}:{{ gitea_http_port }}
+      SSH:     ssh://git@{{ gitea_domain | default('<nas-ip>') }}:{{ gitea_ssh_port }}
+
+      Data directory: {{ gitea_data_dir }}
+
+      On first access, complete setup at the web UI above.
+  tags: gitea

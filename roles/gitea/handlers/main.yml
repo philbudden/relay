@@ -1,0 +1,14 @@
+---
+# gitea role handlers
+
+- name: Reload systemd daemon
+  ansible.builtin.systemd:
+    daemon_reload: true
+  listen: reload systemd
+
+- name: Restart gitea
+  ansible.builtin.systemd:
+    name: "{{ gitea_systemd_unit }}"
+    state: restarted
+  when: gitea_service_restart_enabled | default(true)
+  listen: restart gitea

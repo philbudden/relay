@@ -55,6 +55,31 @@ Declarative 24/7 RTSP camera recording with daily archival and rolling retention
 
 ---
 
+### Gitea (Self-Hosted Git Remote)
+
+**Status**: ✅ Implemented  
+**Role**: `roles/gitea`  
+**Documentation**: [roles/gitea/README.md](../roles/gitea/README.md)
+
+Lightweight, self-hosted Git service with web UI, HTTP and SSH remotes, issue tracking, and pull requests.
+
+**Features**:
+- Web UI for repository management
+- HTTP and SSH Git remotes
+- Issue tracking and pull requests
+- Repositories persist on SSD storage
+
+**Storage**:
+- Data (repos, config, DB): `/mnt/ssd/services/gitea/data`
+
+**Ports**:
+- `3000/tcp` — Web UI and HTTP Git
+- `2222/tcp` — SSH Git (avoids conflict with host SSH on 22)
+
+**Tags**: `gitea`, `git`
+
+---
+
 ## Planned Services
 
 ### NFS (Network File System)
