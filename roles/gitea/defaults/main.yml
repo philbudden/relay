@@ -1,0 +1,35 @@
+---
+# gitea role: self-hosted Git remote service
+
+# Container image configuration
+gitea_image: "docker.io/gitea/gitea"
+gitea_image_tag: "1.23.7"  # Pin explicitly; update deliberately
+gitea_use_digest: false
+gitea_image_digest: ""  # Optional: add SHA digest for reproducible deploys
+gitea_full_image: "{{ gitea_image }}:{{ gitea_image_tag }}"
+
+# Storage paths (assuming Keystone-provisioned storage)
+gitea_base_dir: "{{ relay_storage_root }}/gitea"
+gitea_data_dir: "{{ gitea_base_dir }}/data"
+
+# Network configuration
+gitea_http_port: 3000    # Gitea web UI and HTTP Git operations
+gitea_ssh_port: 2222     # Gitea SSH Git operations (avoids conflict with host SSH on 22)
+
+# Gitea application settings
+gitea_app_name: "Gitea"
+gitea_domain: ""         # Set to host FQDN or IP, e.g. "nas.local"
+gitea_timezone: "UTC"
+
+# Systemd service configuration
+gitea_systemd_unit: "gitea.service"
+gitea_restart_policy: "always"
+gitea_restart_sec: "10s"
+gitea_timeout_start_sec: "120"
+
+# Quadlet file path
+gitea_quadlet_file: "/etc/containers/systemd/gitea.container"
+
+# Resource limits (optional - set to empty string to disable)
+gitea_memory_limit: ""  # Example: "1G"
+gitea_cpu_shares: ""    # Example: "1024"
