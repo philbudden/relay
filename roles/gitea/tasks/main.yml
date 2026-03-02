@@ -40,6 +40,15 @@
     group: root
   tags: gitea
 
+- name: Create Gitea git user SSH directory
+  ansible.builtin.file:
+    path: "{{ gitea_data_dir }}/git/.ssh"
+    state: directory
+    mode: '0700'
+    owner: "1000"
+    group: "1000"
+  tags: gitea
+
 - name: Deploy Gitea Quadlet container definition
   ansible.builtin.template:
     src: gitea.container.j2
