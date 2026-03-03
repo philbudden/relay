@@ -52,6 +52,11 @@ nvr_cpu_shares: ""     # Example: "512" (half normal priority)
 # FFmpeg recorder options
 nvr_rtsp_transport: "tcp"         # tcp is more reliable than udp over WiFi/WAN
 nvr_ffmpeg_loglevel: "warning"    # Reduce journal noise; use "info" to debug
+# Read/write timeout in microseconds. ffmpeg exits if no data is received within
+# this window, allowing systemd Restart=always to reconnect cleanly.
+# Applies to both connection establishment and stream reading.
+# Default: 30 seconds. Increase for cameras with higher latency.
+nvr_rw_timeout: 30000000
 
 # Timestamp overlay for daily concatenated recordings
 # When enabled, the recording datetime is burned into the video during concatenation.

@@ -19,6 +19,7 @@ EnvironmentFile={{ nvr_secrets_dir }}/nvr-cam-{{ camera.name }}.env
 Environment=NVR_SEGMENT_DURATION={{ nvr_segment_duration }}
 Environment=NVR_RTSP_TRANSPORT={{ nvr_rtsp_transport }}
 Environment=NVR_FFMPEG_LOGLEVEL={{ nvr_ffmpeg_loglevel }}
+Environment=NVR_RW_TIMEOUT={{ nvr_rw_timeout }}
 Environment=NVR_RECORDINGS_DIR=/recordings
 
 # Camera recordings volume
@@ -46,6 +47,8 @@ CPUShares={{ nvr_cpu_shares }}
 Restart=always
 RestartSec={{ nvr_restart_sec }}
 TimeoutStartSec={{ nvr_timeout_start_sec }}
+# Disable restart limit: Restart=always must survive camera outages indefinitely
+StartLimitIntervalSec=0
 
 [Install]
 WantedBy=multi-user.target
