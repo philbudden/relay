@@ -8,8 +8,8 @@
 #   NVR_SEGMENT_DURATION - Segment length in seconds (default: 300)
 #   NVR_RTSP_TRANSPORT   - Transport protocol: tcp or udp (default: tcp)
 #   NVR_FFMPEG_LOGLEVEL  - FFmpeg log verbosity (default: warning)
-#   NVR_RW_TIMEOUT       - Read/write timeout in microseconds (default: 30000000)
-#   NVR_RECORDINGS_DIR   - Base recordings path inside container (default: /recordings)
+#   NVR_RW_TIMEOUT       - Socket I/O timeout in microseconds (default: 30000000)
+#                          Passed to ffmpeg as -stimeout; exits on dead RTSP stream.
 
 set -eu
 
@@ -17,19 +17,20 @@ RECORDINGS_DIR="${NVR_RECORDINGS_DIR:-/recordings}"
 SEGMENT_DURATION="${NVR_SEGMENT_DURATION:-300}"
 RTSP_TRANSPORT="${NVR_RTSP_TRANSPORT:-tcp}"
 LOGLEVEL="${NVR_FFMPEG_LOGLEVEL:-warning}"
-RW_TIMEOUT="${NVR_RW_TIMEOUT:-30000000}"
+# -stimeout: socket I/O timeout in microseconds (ffmpeg 4.x RTSP option)
+STIMEOUT="${NVR_RW_TIMEOUT:-30000000}"
 TODAY="$(date -u +%Y-%m-%d)"
 
 # Create today's segment directory (FFmpeg does not create subdirectories)
 mkdir -p "${RECORDINGS_DIR}/segments/${TODAY}"
 
 # Run FFmpeg - exits when date changes (new date dir doesn't exist yet) or when
-# the stream stalls for longer than NVR_RW_TIMEOUT microseconds.
+# the stream stalls for longer than NVR_RW_TIMEOUT microseconds (-stimeout).
 # systemd Restart=always will restart the container, creating the new date dir
 # or reconnecting to the camera after a network disruption.
 exec ffmpeg \
   -loglevel "${LOGLEVEL}" \
-  -rw_timeout "${RW_TIMEOUT}" \
+  -stimeout "${STIMEOUT}" \
   -rtsp_transport "${RTSP_TRANSPORT}" \
   -i "${NVR_RTSP_URL}" \
   -c copy \
