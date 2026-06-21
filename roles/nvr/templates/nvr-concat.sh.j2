@@ -156,6 +156,7 @@ for cam_dir in "${CAMERAS_DIR}"/*/; do
 
   for window in ${WINDOWS}; do
     output="${daily_dir}/${YESTERDAY}_${window}.mp4"
+    output_basename="$(basename "${output}" .mp4)"
     filelist="${work_dir}/${window}.list"
 
     if [ -e "${output}" ]; then
@@ -169,7 +170,7 @@ for cam_dir in "${CAMERAS_DIR}"/*/; do
       break
     fi
 
-    if ! tmp_output="$(mktemp "${daily_dir}/.$(basename "${output}" .mp4).tmp.XXXXXX.mp4")"; then
+    if ! tmp_output="$(mktemp "${daily_dir}/.${output_basename}.tmp.XXXXXX.mp4")"; then
       echo "[nvr-concat] ERROR: Failed to create temporary archive path for $(basename "${output}")" >&2
       cam_failed=1
       break

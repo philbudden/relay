@@ -97,9 +97,17 @@ cp "${input}" "${call_dir}/list"
 printf '%s\n' "${output}" > "${call_dir}/output"
 output_dir="$(dirname "${output}")"
 output_name="$(basename "${output}")"
-tmp_name="${output_name#.}"
-random_suffix="${tmp_name##*.tmp.}"
-final_name="${tmp_name%".tmp.${random_suffix}"}.mp4"
+case "${output_name}" in
+  .*.tmp.??????.mp4) ;;
+  *)
+    printf 'unexpected temporary output format: %s\n' "${output_name}" >&2
+    exit 2
+    ;;
+esac
+
+stripped_name="${output_name#.}"
+random_suffix="${stripped_name##*.tmp.}"
+final_name="${stripped_name%".tmp.${random_suffix}"}.mp4"
 final_output="${output_dir}/${final_name}"
 printf '%s\n' "${final_output}" > "${call_dir}/final-output"
 
