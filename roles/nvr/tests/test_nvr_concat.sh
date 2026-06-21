@@ -43,7 +43,7 @@ assert_eq() {
 
 assert_no_tmp_mp4s() {
   dir="$1"
-  if find "${dir}" -maxdepth 1 -type f -name '*.tmp.*.mp4' | grep -q .; then
+  if find "${dir}" -maxdepth 1 -type f -name '.*.tmp.*.mp4' | grep -q .; then
     fail "expected no temporary mp4 files in ${dir}"
   fi
 }
@@ -106,7 +106,7 @@ case "${output_name}" in
 esac
 
 stripped_name="${output_name#.}"
-random_suffix="${stripped_name##*.tmp.}"
+random_suffix="${stripped_name#*.tmp.}"
 final_name="${stripped_name%".tmp.${random_suffix}"}.mp4"
 final_output="${output_dir}/${final_name}"
 printf '%s\n' "${final_output}" > "${call_dir}/final-output"
