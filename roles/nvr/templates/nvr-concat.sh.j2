@@ -169,7 +169,11 @@ for cam_dir in "${CAMERAS_DIR}"/*/; do
       break
     fi
 
-    tmp_output="$(mktemp "${daily_dir}/.$(basename "${output}" .mp4).tmp.XXXXXX.mp4")"
+    if ! tmp_output="$(mktemp "${daily_dir}/.$(basename "${output}" .mp4).tmp.XXXXXX.mp4")"; then
+      echo "[nvr-concat] ERROR: Failed to create temporary archive path for ${cam_name}/$(basename "${output}")" >&2
+      cam_failed=1
+      break
+    fi
     echo "[nvr-concat] Concatenating $(wc -l < "${filelist}") segments -> ${output}"
 
     # Run FFmpeg — stream copy if no overlay (fast), re-encode if overlay requested.

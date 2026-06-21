@@ -95,7 +95,12 @@ done
 [ -n "${input}" ] || exit 2
 cp "${input}" "${call_dir}/list"
 printf '%s\n' "${output}" > "${call_dir}/output"
-final_output="$(printf '%s\n' "${output}" | sed 's#/\.\([^/]*\)\.tmp\.[^.]*\.mp4$#/\1.mp4#')"
+output_dir="$(dirname "${output}")"
+output_name="$(basename "${output}")"
+final_name="${output_name#.}"
+final_name="${final_name%.mp4}"
+final_name="${final_name%.tmp.*}.mp4"
+final_output="${output_dir}/${final_name}"
 printf '%s\n' "${final_output}" > "${call_dir}/final-output"
 
 if [ -n "${FFMPEG_FAIL_MATCH:-}" ] && \
@@ -160,8 +165,14 @@ assert_tmp_output_in_daily_dir() {
   expected_output="$4"
 
   actual_output="$(cat "${log_dir}/call-${call_number}/output")"
-  case "${actual_output}" in
-    "${daily_dir}"/."${expected_output%.mp4}".tmp.*.mp4) ;;
+  actual_dir="$(dirname "${actual_output}")"
+  actual_name="$(basename "${actual_output}")"
+  expected_prefix=".${expected_output%.mp4}.tmp."
+
+  assert_eq "${actual_dir}" "${daily_dir}" "unexpected temporary output directory for ffmpeg call ${call_number}"
+
+  case "${actual_name}" in
+    "${expected_prefix}"??????.mp4) ;;
     *) fail "unexpected temporary output path for ffmpeg call ${call_number}: ${actual_output}" ;;
   esac
 }
