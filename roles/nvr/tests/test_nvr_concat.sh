@@ -190,6 +190,12 @@ assert_tmp_output_in_daily_dir() {
   esac
 }
 
+assert_ffmpeg_has_overwrite_flag() {
+  log_dir="$1"
+  call_number="$2"
+  grep -qx -- "-y" "${log_dir}/call-${call_number}/args" || fail "expected ffmpeg call ${call_number} to include -y"
+}
+
 test_stream_copy_grouping_and_retention() {
   test_dir="${TEST_ROOT}/stream-copy"
   fake_bin="${test_dir}/bin"
@@ -221,6 +227,10 @@ test_stream_copy_grouping_and_retention() {
   assert_window_count "${log_dir}" 2 "2026-03-01_06-12.mp4"
   assert_window_count "${log_dir}" 3 "2026-03-01_12-18.mp4"
   assert_window_count "${log_dir}" 4 "2026-03-01_18-24.mp4"
+  assert_ffmpeg_has_overwrite_flag "${log_dir}" 1
+  assert_ffmpeg_has_overwrite_flag "${log_dir}" 2
+  assert_ffmpeg_has_overwrite_flag "${log_dir}" 3
+  assert_ffmpeg_has_overwrite_flag "${log_dir}" 4
   assert_tmp_output_in_daily_dir "${log_dir}" 1 "${daily_dir}" "2026-03-01_00-06.mp4"
   assert_tmp_output_in_daily_dir "${log_dir}" 2 "${daily_dir}" "2026-03-01_06-12.mp4"
   assert_tmp_output_in_daily_dir "${log_dir}" 3 "${daily_dir}" "2026-03-01_12-18.mp4"
@@ -268,6 +278,10 @@ test_overlay_uses_window_basetimes() {
   epoch_18="$("${REAL_DATE}" -u -d "2026-03-01 18:00:00" +%s)"
 
   grep -q -- "-vf" "${log_dir}/call-1/args" || fail "expected overlay ffmpeg call to include -vf"
+  assert_ffmpeg_has_overwrite_flag "${log_dir}" 1
+  assert_ffmpeg_has_overwrite_flag "${log_dir}" 2
+  assert_ffmpeg_has_overwrite_flag "${log_dir}" 3
+  assert_ffmpeg_has_overwrite_flag "${log_dir}" 4
   grep -q "${epoch_00}" "${log_dir}/call-1/args" || fail "expected 00-06 overlay basetime"
   grep -q "${epoch_06}" "${log_dir}/call-2/args" || fail "expected 06-12 overlay basetime"
   grep -q "${epoch_12}" "${log_dir}/call-3/args" || fail "expected 12-18 overlay basetime"

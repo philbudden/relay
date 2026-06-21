@@ -191,6 +191,7 @@ for cam_dir in "${CAMERAS_DIR}"/*/; do
       _basetime_epoch="$(date -u -d "${YESTERDAY} ${_start_hhmmss}" +%s)"
       _filter="drawtext=fontfile=${TIMESTAMP_FONT}:text='%{pts\\:localtime\\:${_basetime_epoch}\\:%Y-%m-%d %H\\:%M\\:%S}':x=10:y=h-th-10:fontsize=${TIMESTAMP_FONTSIZE}:fontcolor=white:box=1:boxcolor=black@0.5:boxborderw=4"
       ffmpeg -loglevel "${LOGLEVEL}" \
+        -y \
         -f concat \
         -safe 0 \
         -i "${filelist}" \
@@ -200,6 +201,7 @@ for cam_dir in "${CAMERAS_DIR}"/*/; do
         "${tmp_output}"
     else
       ffmpeg -loglevel "${LOGLEVEL}" \
+        -y \
         -f concat \
         -safe 0 \
         -i "${filelist}" \
