@@ -98,8 +98,7 @@ printf '%s\n' "${output}" > "${call_dir}/output"
 output_dir="$(dirname "${output}")"
 output_name="$(basename "${output}")"
 final_name="${output_name#.}"
-final_name="${final_name%.mp4}"
-final_name="${final_name%.tmp.*}.mp4"
+final_name="${final_name%.tmp.*.mp4}.mp4"
 final_output="${output_dir}/${final_name}"
 printf '%s\n' "${final_output}" > "${call_dir}/final-output"
 
@@ -167,12 +166,12 @@ assert_tmp_output_in_daily_dir() {
   actual_output="$(cat "${log_dir}/call-${call_number}/output")"
   actual_dir="$(dirname "${actual_output}")"
   actual_name="$(basename "${actual_output}")"
-  expected_prefix=".${expected_output%.mp4}.tmp."
+  tmp_filename_prefix=".${expected_output%.mp4}.tmp."
 
   assert_eq "${actual_dir}" "${daily_dir}" "unexpected temporary output directory for ffmpeg call ${call_number}"
 
   case "${actual_name}" in
-    "${expected_prefix}"??????.mp4) ;;
+    "${tmp_filename_prefix}"??????.mp4) ;;
     *) fail "unexpected temporary output path for ffmpeg call ${call_number}: ${actual_output}" ;;
   esac
 }
