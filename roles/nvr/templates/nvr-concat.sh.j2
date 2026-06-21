@@ -20,6 +20,7 @@ YESTERDAY="$(date -u -d yesterday +%Y-%m-%d)"
 TIMESTAMP_OVERLAY="${NVR_TIMESTAMP_OVERLAY:-0}"
 TIMESTAMP_FONTSIZE="${NVR_TIMESTAMP_FONTSIZE:-28}"
 TIMESTAMP_FONT="${NVR_TIMESTAMP_FONT:-}"
+WINDOWS="00-06 06-12 12-18 18-24"
 # Keep YESTERDAY plus the previous RETENTION_DAYS-1 dates (inclusive window).
 RETENTION_START_DAYS=$((RETENTION_DAYS - 1))
 RETENTION_START_DATE="$(date -u -d "${YESTERDAY} - ${RETENTION_START_DAYS} days" +%Y-%m-%d)"
@@ -61,6 +62,7 @@ prune_daily_dir() {
   find "${_daily_dir}" -maxdepth 1 -type f -name "*.mp4" | while IFS= read -r _archive; do
     _archive_name="$(basename "${_archive}")"
     _archive_date="${_archive_name%%_*}"
+    # Also match legacy YYYY-MM-DD.mp4 archives from the old once-per-day format.
     _archive_date="${_archive_date%.mp4}"
 
     case "${_archive_date}" in
@@ -111,7 +113,7 @@ for cam_dir in "${CAMERAS_DIR}"/*/; do
 
   mkdir -p "${daily_dir}"
 
-  for window in 00-06 06-12 12-18 18-24; do
+  for window in ${WINDOWS}; do
     : > "${work_dir}/${window}.list"
   done
 
@@ -138,7 +140,7 @@ for cam_dir in "${CAMERAS_DIR}"/*/; do
     fi
   done < "${all_paths}"
 
-  for window in 00-06 06-12 12-18 18-24; do
+  for window in ${WINDOWS}; do
     if [ ! -s "${work_dir}/${window}.list" ]; then
       echo "[nvr-concat] ERROR: Missing required segments for ${cam_name}/${YESTERDAY}_${window}.mp4" >&2
       cam_failed=1
@@ -152,7 +154,7 @@ for cam_dir in "${CAMERAS_DIR}"/*/; do
     continue
   fi
 
-  for window in 00-06 06-12 12-18 18-24; do
+  for window in ${WINDOWS}; do
     output="${daily_dir}/${YESTERDAY}_${window}.mp4"
     filelist="${work_dir}/${window}.list"
     tmp_output="${work_dir}/$(basename "${output}")"
@@ -163,7 +165,7 @@ for cam_dir in "${CAMERAS_DIR}"/*/; do
         continue
       fi
 
-      echo "[nvr-concat] ERROR: Existing archive is empty for ${cam_name}/$(basename "${output}")" >&2
+      echo "[nvr-concat] ERROR: Existing archive is empty for ${cam_name}/$(basename "${output}") - delete the empty file and rerun" >&2
       cam_failed=1
       break
     fi
@@ -208,7 +210,11 @@ for cam_dir in "${CAMERAS_DIR}"/*/; do
       echo "[nvr-concat] OK: ${cam_name}/$(basename "${output}")"
     else
       rm -f "${tmp_output}"
-      echo "[nvr-concat] ERROR: Concatenation failed for ${cam_name}/$(basename "${output}")" >&2
+      if [ "${_ffmpeg_exit}" -eq 0 ]; then
+        echo "[nvr-concat] ERROR: Concatenation produced an empty archive for ${cam_name}/$(basename "${output}")" >&2
+      else
+        echo "[nvr-concat] ERROR: Concatenation failed for ${cam_name}/$(basename "${output}")" >&2
+      fi
       cam_failed=1
       break
     fi
