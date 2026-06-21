@@ -97,14 +97,20 @@ cp "${input}" "${call_dir}/list"
 printf '%s\n' "${output}" > "${call_dir}/output"
 output_dir="$(dirname "${output}")"
 output_name="$(basename "${output}")"
-final_name="${output_name#.}"
-final_name="${final_name%.tmp.*.mp4}.mp4"
+tmp_name="${output_name#.}"
+random_suffix="${tmp_name##*.tmp.}"
+final_name="${tmp_name%".tmp.${random_suffix}"}.mp4"
 final_output="${output_dir}/${final_name}"
 printf '%s\n' "${final_output}" > "${call_dir}/final-output"
 
-if [ -n "${FFMPEG_FAIL_MATCH:-}" ] && \
-  { printf '%s\n' "${output}" | grep -q "${FFMPEG_FAIL_MATCH}" || printf '%s\n' "${final_output}" | grep -q "${FFMPEG_FAIL_MATCH}"; } && \
-  [ ! -f "${FFMPEG_LOG_DIR}/failed-once" ]; then
+output_matches=0
+if [ -n "${FFMPEG_FAIL_MATCH:-}" ]; then
+  if printf '%s\n' "${output}" | grep -q "${FFMPEG_FAIL_MATCH}" || printf '%s\n' "${final_output}" | grep -q "${FFMPEG_FAIL_MATCH}"; then
+    output_matches=1
+  fi
+fi
+
+if [ "${output_matches}" -eq 1 ] && [ ! -f "${FFMPEG_LOG_DIR}/failed-once" ]; then
   : > "${FFMPEG_LOG_DIR}/failed-once"
   exit 1
 fi
