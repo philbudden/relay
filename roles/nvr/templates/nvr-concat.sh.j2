@@ -157,7 +157,6 @@ for cam_dir in "${CAMERAS_DIR}"/*/; do
   for window in ${WINDOWS}; do
     output="${daily_dir}/${YESTERDAY}_${window}.mp4"
     filelist="${work_dir}/${window}.list"
-    tmp_output="${work_dir}/$(basename "${output}")"
 
     if [ -e "${output}" ]; then
       if [ -s "${output}" ]; then
@@ -170,7 +169,7 @@ for cam_dir in "${CAMERAS_DIR}"/*/; do
       break
     fi
 
-    rm -f "${tmp_output}"
+    tmp_output="$(mktemp "${daily_dir}/.$(basename "${output}" .mp4).tmp.XXXXXX.mp4")"
     echo "[nvr-concat] Concatenating $(wc -l < "${filelist}") segments -> ${output}"
 
     # Run FFmpeg — stream copy if no overlay (fast), re-encode if overlay requested.

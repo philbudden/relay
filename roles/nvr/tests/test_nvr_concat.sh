@@ -41,6 +41,13 @@ assert_eq() {
   [ "${actual}" = "${expected}" ] || fail "${message} (expected '${expected}', got '${actual}')"
 }
 
+assert_no_tmp_mp4s() {
+  dir="$1"
+  if find "${dir}" -maxdepth 1 -type f -name '*.tmp.*.mp4' | grep -q .; then
+    fail "expected no temporary mp4 files in ${dir}"
+  fi
+}
+
 make_fake_tools() {
   fake_bin="$1"
   mkdir -p "${fake_bin}"
@@ -88,9 +95,12 @@ done
 [ -n "${input}" ] || exit 2
 cp "${input}" "${call_dir}/list"
 printf '%s\n' "${output}" > "${call_dir}/output"
-printf '%s\n' "${output}" | sed 's/\.tmp\.[^.]*\.mp4$//' > "${call_dir}/final-output"
+final_output="$(printf '%s\n' "${output}" | sed 's#/\.\([^/]*\)\.tmp\.[^.]*\.mp4$#/\1.mp4#')"
+printf '%s\n' "${final_output}" > "${call_dir}/final-output"
 
-if [ -n "${FFMPEG_FAIL_MATCH:-}" ] && printf '%s\n' "${output}" | grep -q "${FFMPEG_FAIL_MATCH}" && [ ! -f "${FFMPEG_LOG_DIR}/failed-once" ]; then
+if [ -n "${FFMPEG_FAIL_MATCH:-}" ] && \
+  { printf '%s\n' "${output}" | grep -q "${FFMPEG_FAIL_MATCH}" || printf '%s\n' "${final_output}" | grep -q "${FFMPEG_FAIL_MATCH}"; } && \
+  [ ! -f "${FFMPEG_LOG_DIR}/failed-once" ]; then
   : > "${FFMPEG_LOG_DIR}/failed-once"
   exit 1
 fi
@@ -143,6 +153,19 @@ assert_window_count() {
   assert_eq "${count}" "72" "unexpected segment count for ${expected_output}"
 }
 
+assert_tmp_output_in_daily_dir() {
+  log_dir="$1"
+  call_number="$2"
+  daily_dir="$3"
+  expected_output="$4"
+
+  actual_output="$(cat "${log_dir}/call-${call_number}/output")"
+  case "${actual_output}" in
+    "${daily_dir}"/."${expected_output%.mp4}".tmp.*.mp4) ;;
+    *) fail "unexpected temporary output path for ffmpeg call ${call_number}: ${actual_output}" ;;
+  esac
+}
+
 test_stream_copy_grouping_and_retention() {
   test_dir="${TEST_ROOT}/stream-copy"
   fake_bin="${test_dir}/bin"
@@ -167,12 +190,17 @@ test_stream_copy_grouping_and_retention() {
     assert_file "${daily_dir}/2026-03-01_${window}.mp4"
   done
   assert_no_dir "${segments_dir}"
+  assert_no_tmp_mp4s "${daily_dir}"
 
   assert_eq "$(cat "${log_dir}/call-count")" "4" "stream-copy run should invoke ffmpeg four times"
   assert_window_count "${log_dir}" 1 "2026-03-01_00-06.mp4"
   assert_window_count "${log_dir}" 2 "2026-03-01_06-12.mp4"
   assert_window_count "${log_dir}" 3 "2026-03-01_12-18.mp4"
   assert_window_count "${log_dir}" 4 "2026-03-01_18-24.mp4"
+  assert_tmp_output_in_daily_dir "${log_dir}" 1 "${daily_dir}" "2026-03-01_00-06.mp4"
+  assert_tmp_output_in_daily_dir "${log_dir}" 2 "${daily_dir}" "2026-03-01_06-12.mp4"
+  assert_tmp_output_in_daily_dir "${log_dir}" 3 "${daily_dir}" "2026-03-01_12-18.mp4"
+  assert_tmp_output_in_daily_dir "${log_dir}" 4 "${daily_dir}" "2026-03-01_18-24.mp4"
 
   all_segments="${test_dir}/all-segments"
   cat "${log_dir}"/call-*/list | sed "s/^file '//; s/'$//" > "${all_segments}"
@@ -278,6 +306,7 @@ test_partial_failure_is_rerunnable() {
   assert_no_dir "${segments_dir}"
   assert_file "${daily_dir}/2026-03-01_12-18.mp4"
   assert_file "${daily_dir}/2026-03-01_18-24.mp4"
+  assert_no_tmp_mp4s "${daily_dir}"
 }
 
 test_stream_copy_grouping_and_retention
