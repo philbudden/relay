@@ -5,7 +5,7 @@ set -eu
 REPO_ROOT="$(CDPATH= cd -- "$(dirname "$0")/../../.." && pwd)"
 SCRIPT="${REPO_ROOT}/roles/nvr/templates/nvr-concat.sh.j2"
 REAL_DATE="$(command -v date)"
-TEST_ROOT="$(mktemp -d /tmp/nvr-concat-test-XXXXXX)"
+TEST_ROOT="$(mktemp -d)"
 
 cleanup() {
   rm -rf "${TEST_ROOT}"
@@ -88,7 +88,7 @@ done
 [ -n "${input}" ] || exit 2
 cp "${input}" "${call_dir}/list"
 printf '%s\n' "${output}" > "${call_dir}/output"
-printf '%s\n' "${output%.tmp.*}" > "${call_dir}/final-output"
+printf '%s\n' "${output}" | sed 's/\.tmp\.[^.]*\.mp4$//' > "${call_dir}/final-output"
 
 if [ -n "${FFMPEG_FAIL_MATCH:-}" ] && printf '%s\n' "${output}" | grep -q "${FFMPEG_FAIL_MATCH}" && [ ! -f "${FFMPEG_LOG_DIR}/failed-once" ]; then
   : > "${FFMPEG_LOG_DIR}/failed-once"
