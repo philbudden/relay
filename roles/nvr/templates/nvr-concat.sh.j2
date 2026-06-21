@@ -20,6 +20,7 @@ YESTERDAY="$(date -u -d yesterday +%Y-%m-%d)"
 TIMESTAMP_OVERLAY="${NVR_TIMESTAMP_OVERLAY:-0}"
 TIMESTAMP_FONTSIZE="${NVR_TIMESTAMP_FONTSIZE:-28}"
 TIMESTAMP_FONT="${NVR_TIMESTAMP_FONT:-}"
+# Keep YESTERDAY plus the previous RETENTION_DAYS-1 dates (inclusive window).
 RETENTION_START_DAYS=$((RETENTION_DAYS - 1))
 RETENTION_START_DATE="$(date -u -d "${YESTERDAY} - ${RETENTION_START_DAYS} days" +%Y-%m-%d)"
 RETENTION_START_EPOCH="$(date -u -d "${RETENTION_START_DATE} 00:00:00" +%s)"
@@ -100,6 +101,7 @@ for cam_dir in "${CAMERAS_DIR}"/*/; do
   find "${segments_dir}" -name "*.mp4" | sort > "${all_paths}"
 
   if [ ! -s "${all_paths}" ]; then
+    # Treat an empty source day as a failure so operators can recover missing footage.
     echo "[nvr-concat] ERROR: No MP4 files found for ${cam_name}/${YESTERDAY}" >&2
     rm -rf "${work_dir}"
     prune_daily_dir "${daily_dir}"
@@ -153,7 +155,7 @@ for cam_dir in "${CAMERAS_DIR}"/*/; do
   for window in 00-06 06-12 12-18 18-24; do
     output="${daily_dir}/${YESTERDAY}_${window}.mp4"
     filelist="${work_dir}/${window}.list"
-    tmp_output="$(mktemp "${daily_dir}/$(basename "${output}").tmp.XXXXXX.mp4")"
+    tmp_output="${work_dir}/$(basename "${output}")"
 
     if [ -e "${output}" ]; then
       if [ -s "${output}" ]; then
@@ -166,6 +168,7 @@ for cam_dir in "${CAMERAS_DIR}"/*/; do
       break
     fi
 
+    rm -f "${tmp_output}"
     echo "[nvr-concat] Concatenating $(wc -l < "${filelist}") segments -> ${output}"
 
     # Run FFmpeg — stream copy if no overlay (fast), re-encode if overlay requested.
@@ -181,7 +184,7 @@ for cam_dir in "${CAMERAS_DIR}"/*/; do
       _start_hhmmss="$(echo "${_first_seg%.mp4}" | tr '-' ':')"
       _basetime_epoch="$(date -u -d "${YESTERDAY} ${_start_hhmmss}" +%s)"
       _filter="drawtext=fontfile=${TIMESTAMP_FONT}:text='%{pts\\:localtime\\:${_basetime_epoch}\\:%Y-%m-%d %H\\:%M\\:%S}':x=10:y=h-th-10:fontsize=${TIMESTAMP_FONTSIZE}:fontcolor=white:box=1:boxcolor=black@0.5:boxborderw=4"
-      ffmpeg -y -loglevel "${LOGLEVEL}" \
+      ffmpeg -loglevel "${LOGLEVEL}" \
         -f concat \
         -safe 0 \
         -i "${filelist}" \
@@ -190,7 +193,7 @@ for cam_dir in "${CAMERAS_DIR}"/*/; do
         -c:a copy \
         "${tmp_output}"
     else
-      ffmpeg -y -loglevel "${LOGLEVEL}" \
+      ffmpeg -loglevel "${LOGLEVEL}" \
         -f concat \
         -safe 0 \
         -i "${filelist}" \
