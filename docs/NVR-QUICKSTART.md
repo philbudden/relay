@@ -4,7 +4,7 @@ This guide walks you through setting up 24/7 camera recording on your NAS from s
 
 **What you'll end up with:**
 - Each camera recording continuously, saved as 5-minute clips
-- One daily recording file per camera, assembled automatically at 01:00 UTC
+- Four daily 6-hour recording files per camera, assembled automatically at 01:00 UTC
 - Old recordings automatically deleted after 30 days (configurable)
 - Camera passwords stored securely — never visible in configuration files or logs
 
@@ -242,17 +242,22 @@ If the connection drops, the container restarts automatically within 30 seconds.
 
 Every morning at 01:00 UTC, a job runs that:
 1. Takes all of yesterday's 5-minute segments for each camera
-2. Joins them into a single 24-hour file (stream-copy, no re-encoding — fast and lossless)
-3. Deletes the segments **only if the join succeeded**
-4. Removes daily files older than your retention limit
+2. Splits them into four fixed UTC windows: `00-06`, `06-12`, `12-18`, and `18-24`
+3. Joins each window into its own MP4 file (stream-copy by default, no re-encoding)
+4. Deletes the segments **only if all four windows succeeded**
+5. Removes dated daily files older than your retention limit
 
 ```
 /mnt/ssd/services/nvr/cameras/
   front-door/
     daily/
-      2026-02-28.mp4    ← full 24-hour recording
-      2026-03-01.mp4
+      2026-02-28_00-06.mp4
+      2026-02-28_06-12.mp4
+      2026-02-28_12-18.mp4
+      2026-02-28_18-24.mp4
 ```
+
+Each source segment belongs to exactly one window based on its `HH-MM-SS.mp4` filename. If timestamp overlay is enabled, each 6-hour file derives its on-screen clock from the first segment in that specific window.
 
 ### At midnight
 
@@ -359,7 +364,7 @@ If this produces a 10-second clip, recording will work. If it errors, the proble
 journalctl -u nvr-concat.service --no-pager
 ```
 
-If concat fails, **segments are preserved** — no footage is lost. Fix the underlying issue then re-run `systemctl start nvr-concat.service`.
+If concat fails, **segments are preserved** — no footage is lost. Relay only deletes `segments/YYYY-MM-DD/` after all four daily windows succeed. Fix the underlying issue then re-run `systemctl start nvr-concat.service`.
 
 ### No recordings after a gap (power cut, network outage)
 
@@ -423,7 +428,7 @@ ansible-playbook site.yml --tags nvr --ask-vault-pass
 | Path | Contents |
 |------|----------|
 | `/mnt/ssd/services/nvr/cameras/[name]/segments/YYYY-MM-DD/` | 5-minute clip files — path changes if `nvr_recordings_dir` is set |
-| `/mnt/ssd/services/nvr/cameras/[name]/daily/` | 24-hour archive files — same |
+| `/mnt/ssd/services/nvr/cameras/[name]/daily/` | Four dated archive files per UTC day: `YYYY-MM-DD_00-06.mp4`, `YYYY-MM-DD_06-12.mp4`, `YYYY-MM-DD_12-18.mp4`, `YYYY-MM-DD_18-24.mp4` |
 | `/mnt/ssd/services/nvr/scripts/` | Recording and concat scripts |
 | `/etc/containers/secrets/nvr-cam-[name].env` | Encrypted RTSP URL (0600, root only) |
 | `/etc/containers/systemd/nvr-recorder-[name].container` | Quadlet: per-camera recorder |

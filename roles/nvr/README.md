@@ -7,9 +7,9 @@ Declarative 24/7 RTSP camera recording with daily archival, running as Podman co
 This role deploys a containerised NVR (Network Video Recorder) system using the `linuxserver/ffmpeg` image. It:
 
 - Records each camera 24/7 into 5-minute MP4 segments
-- Concatenates the previous day's segments into a single 24-hour file at 01:00 UTC
-- Deletes source segments after successful concatenation
-- Retains a rolling window of daily recordings (default: 30 days)
+- Concatenates the previous day's segments into four fixed 6-hour files at 01:00 UTC
+- Deletes source segments only after all four archive windows succeed
+- Retains a rolling window of dated daily recordings (default: 30 days)
 - Handles RTSP credentials securely via Ansible Vault + EnvironmentFile
 
 No motion detection, no web UI, no database. Intentionally boring infrastructure.
@@ -44,12 +44,14 @@ No motion detection, no web UI, no database. Intentionally boring infrastructure
 ┌──────────────────────────┐
 │  nvr-concat              │
 │  (Quadlet, oneshot)      │
-│  Concat → daily MP4      │
-│  Delete segments         │
-│  Prune > 30 days         │
+│  Concat → 4x daily MP4   │
+│  Delete on full success  │
+│  Prune by archive date   │
 └──────────────────────────┘
-  [cam1]/daily/YYYY-MM-DD.mp4
-  [cam2]/daily/YYYY-MM-DD.mp4
+  [cam1]/daily/YYYY-MM-DD_00-06.mp4
+  [cam1]/daily/YYYY-MM-DD_06-12.mp4
+  [cam1]/daily/YYYY-MM-DD_12-18.mp4
+  [cam1]/daily/YYYY-MM-DD_18-24.mp4
 ```
 
 ## Quick Start
@@ -134,7 +136,7 @@ Each camera gets a subdirectory: `{{ nvr_recordings_dir }}/[camera-name]/`
 
 ### Timestamp Overlay
 
-Burns the recording datetime into the concatenated daily video.
+Burns the recording datetime into each concatenated 6-hour archive video.
 
 | Variable | Default | Description |
 |---|---|---|
@@ -148,9 +150,9 @@ nvr_timestamp_overlay: true
 nvr_timestamp_fontsize: 28   # optional
 ```
 
-**How it works**: The overlay uses the first segment's filename (`HH-MM-SS.mp4`) to determine the recording start time. FFmpeg's `drawtext` filter maps each frame's PTS to the correct wall-clock time. Timestamps are displayed in `YYYY-MM-DD HH:MM:SS` format in the bottom-left corner.
+**How it works**: Each 6-hour archive uses the first segment filename in that window (`HH-MM-SS.mp4`) to determine the recording start time. FFmpeg's `drawtext` filter maps each frame's PTS to the correct wall-clock time for that specific window. Timestamps are displayed in `YYYY-MM-DD HH:MM:SS` format in the bottom-left corner.
 
-**Performance note**: Re-encoding `libx264 -preset fast -crf 23` on ARM64 (CM5) processes approximately 2–4× realtime. A 24-hour recording takes 6–12 hours to re-encode. Ensure the concat job (`01:00 UTC`) completes before the next day's job fires.
+**Performance note**: Re-encoding `libx264 -preset fast -crf 23` on ARM64 (CM5) processes approximately 2–4× realtime. Each 6-hour archive takes roughly 1.5–3 hours to re-encode, and the four windows are processed sequentially. Ensure the concat job (`01:00 UTC`) completes before the next day's job fires.
 
 **Font**: A TrueType font is required. The container image is probed for fonts at common Alpine and Debian paths. If none is found, the job fails with a clear error. To provide a font manually, set `NVR_TIMESTAMP_FONT` in the container environment to a path reachable inside the container.
 
@@ -188,7 +190,10 @@ Camera structure:
         │   └── YYYY-MM-DD/
         │       └── HH-MM-SS.mp4  (5-minute clips)
         └── daily/
-            └── YYYY-MM-DD.mp4    (24-hour concatenated recording)
+            ├── YYYY-MM-DD_00-06.mp4
+            ├── YYYY-MM-DD_06-12.mp4
+            ├── YYYY-MM-DD_12-18.mp4
+            └── YYYY-MM-DD_18-24.mp4
 
 /etc/containers/secrets/
 └── nvr-cam-[name].env    # NVR_RTSP_URL=... (mode 0600, root-only)
@@ -206,6 +211,17 @@ If `nvr_recordings_dir` is overridden (e.g. to save to the backup RAID for extra
 ```
 
 ## Operations
+
+### Archive windows
+
+For each processed UTC date, every camera produces these fixed files:
+
+- `YYYY-MM-DD_00-06.mp4` for segments from `00:00:00` up to `05:59:59`
+- `YYYY-MM-DD_06-12.mp4` for segments from `06:00:00` up to `11:59:59`
+- `YYYY-MM-DD_12-18.mp4` for segments from `12:00:00` up to `17:59:59`
+- `YYYY-MM-DD_18-24.mp4` for segments from `18:00:00` up to `23:59:59`
+
+The concat job only deletes `segments/YYYY-MM-DD/` after all four windows succeed (or already exist as non-empty archives on a rerun). If any required window is empty or FFmpeg fails, the camera is marked failed and all source segments are preserved for recovery.
 
 ### Check recorder status
 

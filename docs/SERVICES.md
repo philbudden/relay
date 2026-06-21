@@ -62,15 +62,15 @@ Declarative 24/7 RTSP camera recording with daily archival and rolling retention
 **Features**:
 - Records multiple cameras simultaneously (one container per camera)
 - 5-minute segment files for resilience
-- Daily concatenation at 01:00 UTC into single 24-hour files
-- Automatic deletion of segments after successful concatenation
+- Daily concatenation at 01:00 UTC into four fixed 6-hour files
+- Automatic deletion of segments only after all four windows succeed
 - Rolling retention window (default 30 days)
 - RTSP credentials secured via Ansible Vault + host secrets files
 - No web UI, no motion detection, no database
 
 **Storage**:
 - Segments: `/mnt/ssd/services/nvr/cameras/[name]/segments/YYYY-MM-DD/`
-- Daily recordings: `/mnt/ssd/services/nvr/cameras/[name]/daily/YYYY-MM-DD.mp4`
+- Daily recordings: `/mnt/ssd/services/nvr/cameras/[name]/daily/YYYY-MM-DD_00-06.mp4` through `YYYY-MM-DD_18-24.mp4`
 
 **Tags**: `nvr`, `cameras`, `recording`
 
