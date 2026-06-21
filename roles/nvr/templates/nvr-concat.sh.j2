@@ -20,6 +20,9 @@ YESTERDAY="$(date -u -d yesterday +%Y-%m-%d)"
 TIMESTAMP_OVERLAY="${NVR_TIMESTAMP_OVERLAY:-0}"
 TIMESTAMP_FONTSIZE="${NVR_TIMESTAMP_FONTSIZE:-28}"
 TIMESTAMP_FONT="${NVR_TIMESTAMP_FONT:-}"
+RETENTION_START_DAYS=$((RETENTION_DAYS - 1))
+RETENTION_START_DATE="$(date -u -d "${YESTERDAY} - ${RETENTION_START_DAYS} days" +%Y-%m-%d)"
+RETENTION_START_EPOCH="$(date -u -d "${RETENTION_START_DATE} 00:00:00" +%s)"
 
 echo "[nvr-concat] Starting daily concatenation for ${YESTERDAY}"
 echo "[nvr-concat] Cameras root: ${CAMERAS_DIR}"
@@ -49,6 +52,29 @@ fi
 
 ERRORS=0
 
+prune_daily_dir() {
+  _daily_dir="$1"
+
+  [ -d "${_daily_dir}" ] || return 0
+
+  find "${_daily_dir}" -maxdepth 1 -type f -name "*.mp4" | while IFS= read -r _archive; do
+    _archive_name="$(basename "${_archive}")"
+    _archive_date="${_archive_name%%_*}"
+    _archive_date="${_archive_date%.mp4}"
+
+    case "${_archive_date}" in
+      ????-??-??)
+        _archive_epoch="$(date -u -d "${_archive_date} 00:00:00" +%s)"
+        if [ "${_archive_epoch}" -lt "${RETENTION_START_EPOCH}" ]; then
+          rm -f "${_archive}"
+        fi
+        ;;
+    esac
+  done
+
+  echo "[nvr-concat] Pruned ${_daily_dir} files older than ${RETENTION_DAYS} days"
+}
+
 for cam_dir in "${CAMERAS_DIR}"/*/; do
   # Skip if glob matched nothing
   [ -d "${cam_dir}" ] || continue
@@ -56,93 +82,146 @@ for cam_dir in "${CAMERAS_DIR}"/*/; do
   cam_name="$(basename "${cam_dir}")"
   segments_dir="${cam_dir}segments/${YESTERDAY}"
   daily_dir="${cam_dir}daily"
-  output="${daily_dir}/${YESTERDAY}.mp4"
-  filelist="$(mktemp /tmp/nvr-concat-XXXXXX.txt)"
+  work_dir="$(mktemp -d /tmp/nvr-concat-XXXXXX)"
+  all_paths="${work_dir}/all.paths"
+  cam_failed=0
 
   echo "[nvr-concat] Processing camera: ${cam_name}"
 
   # Skip if no segments exist for yesterday
   if [ ! -d "${segments_dir}" ]; then
     echo "[nvr-concat] WARN: No segments directory for ${cam_name}/${YESTERDAY} - skipping"
-    rm -f "${filelist}"
+    rm -rf "${work_dir}"
+    prune_daily_dir "${daily_dir}"
     continue
   fi
 
   # Find all MP4 segments sorted by filename (HH-MM-SS.mp4)
-  find "${segments_dir}" -name "*.mp4" | sort > "${filelist}.paths"
+  find "${segments_dir}" -name "*.mp4" | sort > "${all_paths}"
 
-  if [ ! -s "${filelist}.paths" ]; then
-    echo "[nvr-concat] WARN: No MP4 files found for ${cam_name}/${YESTERDAY} - skipping"
-    rm -f "${filelist}" "${filelist}.paths"
+  if [ ! -s "${all_paths}" ]; then
+    echo "[nvr-concat] ERROR: No MP4 files found for ${cam_name}/${YESTERDAY}" >&2
+    rm -rf "${work_dir}"
+    prune_daily_dir "${daily_dir}"
+    ERRORS=$((ERRORS + 1))
     continue
   fi
 
-  # When timestamp overlay is enabled, derive the recording start time from the
-  # first segment's filename (HH-MM-SS.mp4). This filename encodes the wall-clock
-  # time the segment began, so using it as the FFmpeg basetime gives frame-accurate
-  # datetime stamps in the output regardless of any gap at midnight startup.
-  if [ "${TIMESTAMP_OVERLAY}" = "1" ]; then
-    _first_seg="$(head -1 "${filelist}.paths" | xargs basename)"
-    _start_hhmmss="$(echo "${_first_seg%.mp4}" | tr '-' ':')"
-    _basetime_epoch="$(date -u -d "${YESTERDAY} ${_start_hhmmss}" +%s)"
-  fi
-
-  # Build FFmpeg concat file list format
-  while IFS= read -r f; do
-    printf "file '%s'\n" "${f}"
-  done < "${filelist}.paths" > "${filelist}"
-  rm -f "${filelist}.paths"
-
-  # Ensure daily output directory exists
   mkdir -p "${daily_dir}"
 
-  echo "[nvr-concat] Concatenating $(wc -l < "${filelist}") segments -> ${output}"
+  for window in 00-06 06-12 12-18 18-24; do
+    : > "${work_dir}/${window}.list"
+  done
 
-  # Run FFmpeg — stream copy if no overlay (fast), re-encode if overlay requested.
-  # set +e / set -e bracket lets us capture the exit code without triggering set -eu.
-  set +e
-  if [ "${TIMESTAMP_OVERLAY}" = "1" ]; then
-    # drawtext uses %{pts\:localtime\:EPOCH\:FORMAT}:
-    #   pts       - use the frame PTS (seconds since start of recording, PTS=0 at first frame)
-    #   localtime - interpret as a Unix timestamp for display
-    #   EPOCH     - Unix timestamp of the first frame (derived from segment filename)
-    #   FORMAT    - strftime format; colons within the format are escaped as \: for FFmpeg
-    _filter="drawtext=fontfile=${TIMESTAMP_FONT}:text='%{pts\\:localtime\\:${_basetime_epoch}\\:%Y-%m-%d %H\\:%M\\:%S}':x=10:y=h-th-10:fontsize=${TIMESTAMP_FONTSIZE}:fontcolor=white:box=1:boxcolor=black@0.5:boxborderw=4"
-    ffmpeg -loglevel "${LOGLEVEL}" \
-      -f concat \
-      -safe 0 \
-      -i "${filelist}" \
-      -vf "${_filter}" \
-      -c:v libx264 -preset fast -crf 23 \
-      -c:a copy \
-      "${output}"
-  else
-    ffmpeg -loglevel "${LOGLEVEL}" \
-      -f concat \
-      -safe 0 \
-      -i "${filelist}" \
-      -c copy \
-      "${output}"
+  while IFS= read -r f; do
+    _segment_name="$(basename "${f}")"
+    _segment_hour="${_segment_name%%-*}"
+
+    case "${_segment_hour}" in
+      00|01|02|03|04|05) _window="00-06" ;;
+      06|07|08|09|10|11) _window="06-12" ;;
+      12|13|14|15|16|17) _window="12-18" ;;
+      18|19|20|21|22|23) _window="18-24" ;;
+      *)
+        echo "[nvr-concat] ERROR: Invalid segment filename for ${cam_name}: ${_segment_name}" >&2
+        cam_failed=1
+        break
+        ;;
+    esac
+
+    printf "file '%s'\n" "${f}" >> "${work_dir}/${_window}.list"
+
+    if [ ! -f "${work_dir}/${_window}.first" ]; then
+      printf '%s\n' "${_segment_name}" > "${work_dir}/${_window}.first"
+    fi
+  done < "${all_paths}"
+
+  for window in 00-06 06-12 12-18 18-24; do
+    if [ ! -s "${work_dir}/${window}.list" ]; then
+      echo "[nvr-concat] ERROR: Missing required segments for ${cam_name}/${YESTERDAY}_${window}.mp4" >&2
+      cam_failed=1
+    fi
+  done
+
+  if [ "${cam_failed}" -ne 0 ]; then
+    rm -rf "${work_dir}"
+    prune_daily_dir "${daily_dir}"
+    ERRORS=$((ERRORS + 1))
+    continue
   fi
-  _ffmpeg_exit=$?
-  set -e
 
-  if [ "${_ffmpeg_exit}" -eq 0 ]; then
-    echo "[nvr-concat] OK: ${cam_name}/${YESTERDAY}.mp4"
-    rm -f "${filelist}"
+  for window in 00-06 06-12 12-18 18-24; do
+    output="${daily_dir}/${YESTERDAY}_${window}.mp4"
+    filelist="${work_dir}/${window}.list"
+    tmp_output="${output}.tmp.$$"
+
+    if [ -e "${output}" ]; then
+      if [ -s "${output}" ]; then
+        echo "[nvr-concat] OK: ${cam_name}/$(basename "${output}") already exists - keeping"
+        continue
+      fi
+
+      echo "[nvr-concat] ERROR: Existing archive is empty for ${cam_name}/$(basename "${output}")" >&2
+      cam_failed=1
+      break
+    fi
+
+    rm -f "${tmp_output}"
+    echo "[nvr-concat] Concatenating $(wc -l < "${filelist}") segments -> ${output}"
+
+    # Run FFmpeg — stream copy if no overlay (fast), re-encode if overlay requested.
+    # set +e / set -e bracket lets us capture the exit code without triggering set -eu.
+    set +e
+    if [ "${TIMESTAMP_OVERLAY}" = "1" ]; then
+      # drawtext uses %{pts\:localtime\:EPOCH\:FORMAT}:
+      #   pts       - use the frame PTS (seconds since start of recording, PTS=0 at first frame)
+      #   localtime - interpret as a Unix timestamp for display
+      #   EPOCH     - Unix timestamp of the first frame (derived from segment filename)
+      #   FORMAT    - strftime format; colons within the format are escaped as \: for FFmpeg
+      _first_seg="$(cat "${work_dir}/${window}.first")"
+      _start_hhmmss="$(echo "${_first_seg%.mp4}" | tr '-' ':')"
+      _basetime_epoch="$(date -u -d "${YESTERDAY} ${_start_hhmmss}" +%s)"
+      _filter="drawtext=fontfile=${TIMESTAMP_FONT}:text='%{pts\\:localtime\\:${_basetime_epoch}\\:%Y-%m-%d %H\\:%M\\:%S}':x=10:y=h-th-10:fontsize=${TIMESTAMP_FONTSIZE}:fontcolor=white:box=1:boxcolor=black@0.5:boxborderw=4"
+      ffmpeg -loglevel "${LOGLEVEL}" \
+        -f concat \
+        -safe 0 \
+        -i "${filelist}" \
+        -vf "${_filter}" \
+        -c:v libx264 -preset fast -crf 23 \
+        -c:a copy \
+        "${tmp_output}"
+    else
+      ffmpeg -loglevel "${LOGLEVEL}" \
+        -f concat \
+        -safe 0 \
+        -i "${filelist}" \
+        -c copy \
+        "${tmp_output}"
+    fi
+    _ffmpeg_exit=$?
+    set -e
+
+    if [ "${_ffmpeg_exit}" -eq 0 ] && [ -s "${tmp_output}" ]; then
+      mv "${tmp_output}" "${output}"
+      echo "[nvr-concat] OK: ${cam_name}/$(basename "${output}")"
+    else
+      rm -f "${tmp_output}"
+      echo "[nvr-concat] ERROR: Concatenation failed for ${cam_name}/$(basename "${output}")" >&2
+      cam_failed=1
+      break
+    fi
+  done
+
+  if [ "${cam_failed}" -eq 0 ]; then
     rm -rf "${segments_dir}"
     echo "[nvr-concat] Deleted segments: ${segments_dir}"
   else
-    echo "[nvr-concat] ERROR: Concatenation failed for ${cam_name}/${YESTERDAY}" >&2
-    rm -f "${filelist}"
     ERRORS=$((ERRORS + 1))
-    # Do NOT delete segments on failure - preserve for manual recovery
-    continue
+    echo "[nvr-concat] WARN: Preserved segments for ${cam_name}/${YESTERDAY} after failure"
   fi
 
-  # Prune daily recordings older than RETENTION_DAYS for this camera
-  find "${daily_dir}" -name "*.mp4" -mtime "+${RETENTION_DAYS}" -delete
-  echo "[nvr-concat] Pruned ${cam_name}/daily/ files older than ${RETENTION_DAYS} days"
+  rm -rf "${work_dir}"
+  prune_daily_dir "${daily_dir}"
 done
 
 if [ "${ERRORS}" -gt 0 ]; then

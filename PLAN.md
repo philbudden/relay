@@ -71,16 +71,16 @@ boxcolor=black@0.5
 ## 5. Concat Behaviour
 
 - Operates on previous UTC day
-- Generates ordered concat list
+- Generates four ordered concat lists (00-06, 06-12, 12-18, 18-24)
 - Re-encodes with overlay
-- Deletes segments only on success
+- Deletes segments only after all four windows succeed
 
 ---
 
 ## 6. FFmpeg Concat Command
 
 ```bash
-ffmpeg   -f concat   -safe 0   -i concat.txt   -vf "<DRAW_TEXT_FILTER>"   -c:v libx264   -preset veryfast   -crf 23   -c:a copy   /recordings/daily/YYYY-MM-DD.mp4
+ffmpeg   -f concat   -safe 0   -i concat-00-06.txt   -vf "<DRAW_TEXT_FILTER>"   -c:v libx264   -preset veryfast   -crf 23   -c:a copy   /recordings/daily/YYYY-MM-DD_00-06.mp4
 ```
 
 ---
@@ -114,7 +114,7 @@ set -eu
 
 YESTERDAY=$(date -u -d "yesterday" +%F)
 SEG_DIR="/recordings/segments/$YESTERDAY"
-OUT_FILE="/recordings/daily/$YESTERDAY.mp4"
+OUT_FILE="/recordings/daily/${YESTERDAY}_00-06.mp4"
 
 [ -d "$SEG_DIR" ] || exit 0
 
@@ -134,4 +134,3 @@ ffmpeg   -f concat   -safe 0   -i /tmp/concat.txt   -vf "$DRAW_TEXT_FILTER"   -c
 - No parallel concat jobs
 - No credential exposure
 - Declarative via Ansible
-
