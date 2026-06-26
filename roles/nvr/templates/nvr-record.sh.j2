@@ -33,7 +33,11 @@ exec ffmpeg \
   -stimeout "${STIMEOUT}" \
   -rtsp_transport "${RTSP_TRANSPORT}" \
   -i "${NVR_RTSP_URL}" \
-  -c copy \
+  -map 0:v:0 \
+  -map 0:a:0? \
+  -c:v copy \
+  -c:a aac \
+  -af aresample=async=1:first_pts=0 \
   -f segment \
   -segment_time "${SEGMENT_DURATION}" \
   -segment_format mp4 \

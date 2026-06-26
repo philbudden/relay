@@ -7,6 +7,7 @@ Declarative 24/7 RTSP camera recording with daily archival, running as Podman co
 This role deploys a containerised NVR (Network Video Recorder) system using the `linuxserver/ffmpeg` image. It:
 
 - Records each camera 24/7 into 5-minute MP4 segments
+- Copies video and re-encodes audio to AAC with async resampling for stable segment audio
 - Concatenates the previous day's segments into four fixed 6-hour files at 01:00 UTC
 - Deletes source segments only after all four archive windows succeed
 - Retains a rolling window of dated daily recordings (default: 30 days)
