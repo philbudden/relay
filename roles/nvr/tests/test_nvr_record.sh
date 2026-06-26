@@ -20,7 +20,7 @@ fail() {
 assert_contains_line() {
   file="$1"
   expected="$2"
-  grep -qx -- "${expected}" "${file}" || fail "expected ${file} to contain '${expected}'"
+  grep -Fqx -- "${expected}" "${file}" || fail "expected ${file} to contain '${expected}'"
 }
 
 make_fake_ffmpeg() {
